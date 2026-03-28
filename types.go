@@ -16,3 +16,10 @@ type ExchageRates struct {
 type AppState struct {
 	rates ExchageRates
 }
+
+type PriceResponse map[string]float64
+
+type PriceProvider interface {
+	GetPrices() (PriceResponse, error)
+	GetName() string
+}
