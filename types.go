@@ -1,6 +1,8 @@
 package main
 
-import "time"
+import (
+	"time"
+)
 
 // TODO: Separate each "provider" with his own mutex (r-w) so we can lock individual provider instead of whole rates
 

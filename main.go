@@ -12,7 +12,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/hello", HelloWorldHandler{})
-	mux.Handle("/rates",RatesHandler{})
+	mux.Handle("/rates", RatesHandler{})
 
 	fmt.Printf("Servidor corriendo en http://localhost:%d\n", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), mux)
