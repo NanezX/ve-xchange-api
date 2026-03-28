@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 )
@@ -161,10 +162,17 @@ func (p *BinaceProvider) GetPrices() (PriceResponse, error) {
 		return nil, err
 	}
 
+	buyPrices, err := p.fetchPrices(TypeBuy)
+	if err != nil {
+		return nil, err
+	}
+
+	combined := slices.Concat(sellPrices, buyPrices)
+
 	acc := 0.0
 	counter := 0.0
 
-	for _, val := range sellPrices {
+	for _, val := range combined {
 		counter++
 
 		acc += val
