@@ -18,6 +18,7 @@ type RatesHandler struct{}
 func (RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	dolarVzlaData, err := fetchDolarVzlaBcv()
 	if err != nil {
+		http.Error(w, "Error obteniendo datos del BCV", http.StatusInternalServerError)
 		return
 	}
 
@@ -26,6 +27,7 @@ func (RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	bnbPrices, err := binaProvider.GetPrices()
 	if err != nil {
 		fmt.Printf("error bnb: %v", err)
+		http.Error(w, "Error obteniendo datos del Binance p2p", http.StatusInternalServerError)
 		return
 	}
 
