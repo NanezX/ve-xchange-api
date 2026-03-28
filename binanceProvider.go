@@ -13,12 +13,12 @@ import (
 )
 
 type BinaceProvider struct {
-	url string
+	baseUrl string
 }
 
 func NewBinanceProvider() *BinaceProvider {
 	return &BinaceProvider{
-		url: "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+		baseUrl: "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
 	}
 }
 
@@ -97,7 +97,7 @@ func (p *BinaceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 	bufferBody := bytes.NewBuffer(jsonBody)
 
 	// Generate the request
-	req, err := http.NewRequest(http.MethodPost, p.url, bufferBody)
+	req, err := http.NewRequest(http.MethodPost, p.baseUrl, bufferBody)
 	if err != nil {
 		return nil, err
 	}
