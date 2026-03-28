@@ -169,16 +169,18 @@ func (p *BinaceProvider) GetPrices() (PriceResponse, error) {
 
 	combined := slices.Concat(sellPrices, buyPrices)
 
-	acc := 0.0
-	counter := 0.0
+	if len(combined) == 0 {
+		return nil, errors.New("no prices found")
+	}
+
+	var acc float64
 
 	for _, val := range combined {
-		counter++
 
 		acc += val
 	}
 
-	return PriceResponse{p.GetName(): acc / counter}, nil
+	return PriceResponse{p.GetName(): acc / float64(len(combined))}, nil
 
 }
 
