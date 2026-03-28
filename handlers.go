@@ -16,6 +16,7 @@ func (HelloWorldHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type RatesHandler struct{}
 
 func (RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO: Read from stored or something - The values should be updated independently
 	dolarVzlaData, err := fetchDolarVzlaBcv()
 	if err != nil {
 		http.Error(w, "Error obteniendo datos del BCV", http.StatusInternalServerError)
