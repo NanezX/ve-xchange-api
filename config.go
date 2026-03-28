@@ -28,7 +28,7 @@ func LoadConfig() error {
 	}
 
 	appPort, err := strconv.ParseUint(os.Getenv("APP_PORT"), 10, 64)
-	
+
 	if err != nil {
 		// Always default to 8080, even if malformed
 		fmt.Println("Missing or malformed APP_PORT. Usin 8080 as default")
