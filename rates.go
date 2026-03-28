@@ -28,10 +28,10 @@ type DolarVzlaBCVResponse struct {
 }
 
 const dolarVzlaUrl = "https://api.dolarvzla.com/public/"
-const apiKey = "<API_KEY_DOLAR_VZLA>"
 
 // Fetch from `DolarVzla` API
 func fetchDolarVzlaBcv() (DolarVzlaBCVResponse, error) {
+	// os.Getenv("DOLAR_VZLA_API_KEY")
 	url := dolarVzlaUrl + "bcv/exchange-rate"
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
@@ -39,7 +39,7 @@ func fetchDolarVzlaBcv() (DolarVzlaBCVResponse, error) {
 		return DolarVzlaBCVResponse{}, err
 	}
 
-	req.Header.Set("x-dolarvzla-key", apiKey)
+	req.Header.Set("x-dolarvzla-key", AppConfig.DolarVzlaApiKey)
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
