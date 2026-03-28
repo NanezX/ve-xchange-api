@@ -20,12 +20,19 @@ func (RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		return
 	}
+
+	binaProvider := NewBinanceProvider()
+
+	bnbPrices, err := binaProvider.GetPrices()
+	if err != nil {
+		fmt.Printf("error bnb: %v", err)
+		return
+	}
+
 	//
 	data := ExchageRates{
-		BCV: dolarVzlaData.Current.USD,
-		// BCV:        471.70,
-		Binance:    660,
-		Paralelo:   658.56,
+		BCV:        dolarVzlaData.Current.USD,
+		Binance:    bnbPrices[binaProvider.GetName()],
 		LastUpdate: time.Now(),
 	}
 

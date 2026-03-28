@@ -9,7 +9,6 @@ import (
 type ExchageRates struct {
 	BCV        float64   `json:"bcv"`
 	Binance    float64   `json:"binance"`
-	Paralelo   float64   `json:"paralelo"`
 	LastUpdate time.Time `json:"last_update"`
 }
 
