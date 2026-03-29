@@ -13,7 +13,7 @@ func main() {
 		return
 	}
 
-	StartPriceWorker()
+	go StartPriceWorker()
 
 	mux := http.NewServeMux()
 
