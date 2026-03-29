@@ -64,4 +64,5 @@ func updateBcv(p *DolarVzlaProvider) {
 
 	AppState.Rates.UsdBCV = data["USD_BCV"]
 	AppState.Rates.EurBCV = data["EUR_BCV"]
+	AppState.Rates.LastUpdate = time.Now()
 }
