@@ -5,8 +5,6 @@ import (
 	"net/http"
 )
 
-// var appState AppState = AppState{}
-
 func main() {
 	err := LoadConfig()
 
@@ -14,6 +12,8 @@ func main() {
 		fmt.Printf("Failed to load env file... [Error]: %v", err)
 		return
 	}
+
+	StartPriceWorker()
 
 	mux := http.NewServeMux()
 
