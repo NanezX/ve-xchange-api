@@ -17,7 +17,9 @@ type RatesHandler struct{}
 
 func (RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO: Read from stored or something - The values should be updated independently
-	dolarVzlaData, err := fetchDolarVzlaBcv()
+	dolarVzlaProvider := NewDolarVzlaProvider()
+
+	vlzaData, err := dolarVzlaProvider.GetPrices()
 	if err != nil {
 		http.Error(w, "Error obteniendo datos del BCV", http.StatusInternalServerError)
 		return
@@ -34,9 +36,10 @@ func (RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	//
 	data := ExchageRates{
-		BCV:        dolarVzlaData.Current.USD,
-		Binance:    bnbPrices[binaProvider.GetName()],
-		LastUpdate: time.Now(),
+		UsdBCV:      vlzaData["USD_BCV"],
+		EurBCV:      vlzaData["EUR_BCV"],
+		UsdtBinance: bnbPrices["USDT_BINANCE"],
+		LastUpdate:  time.Now(),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
