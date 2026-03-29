@@ -7,9 +7,10 @@ import (
 // TODO: Separate each "provider" with his own mutex (r-w) so we can lock individual provider instead of whole rates
 
 type ExchageRates struct {
-	BCV        float64   `json:"bcv"`
-	Binance    float64   `json:"binance"`
-	LastUpdate time.Time `json:"last_update"`
+	UsdBCV      float64   `json:"usd_bcv"`
+	EurBCV      float64   `json:"eur_bcv"`
+	UsdtBinance float64   `json:"usdt_binance"`
+	LastUpdate  time.Time `json:"last_update"`
 }
 
 type AppState struct {
