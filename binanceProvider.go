@@ -180,7 +180,7 @@ func (p *BinaceProvider) GetPrices() (PriceResponse, error) {
 		acc += val
 	}
 
-	return PriceResponse{p.GetName(): acc / float64(len(combined))}, nil
+	return PriceResponse{"USDT_BINANCE": acc / float64(len(combined))}, nil
 
 }
 
