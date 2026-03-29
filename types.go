@@ -13,10 +13,6 @@ type ExchageRates struct {
 	LastUpdate  time.Time `json:"last_update"`
 }
 
-type AppState struct {
-	rates ExchageRates
-}
-
 type PriceResponse map[string]float64
 
 type PriceProvider interface {
