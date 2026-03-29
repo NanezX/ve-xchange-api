@@ -170,7 +170,7 @@ func (p *BinaceProvider) GetPrices() (PriceResponse, error) {
 	combined := slices.Concat(sellPrices, buyPrices)
 
 	if len(combined) == 0 {
-		return nil, errors.New("no prices found")
+		return nil, errors.New("No prices found")
 	}
 
 	var acc float64
