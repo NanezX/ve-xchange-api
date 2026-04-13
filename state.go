@@ -6,18 +6,18 @@ import (
 
 type State struct {
 	sync.RWMutex
-	Rates ExchageRates
+	Rates ExchangeRates
 }
 
 var AppState = &State{}
 
-func (s *State) UpdateRates(newRates ExchageRates) {
+func (s *State) UpdateRates(newRates ExchangeRates) {
 	s.Lock()
 	defer s.Unlock()
 	s.Rates = newRates
 }
 
-func (s *State) GetRates() ExchageRates {
+func (s *State) GetRates() ExchangeRates {
 	s.RLock()
 	defer s.RUnlock()
 	return s.Rates
