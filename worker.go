@@ -36,7 +36,7 @@ func StartPriceWorker() {
 	}
 }
 
-func updateBinance(p *BinaceProvider) {
+func updateBinance(p *BinanceProvider) {
 	data, err := p.GetPrices()
 
 	if err != nil {

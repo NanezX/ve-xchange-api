@@ -12,12 +12,12 @@ import (
 	"time"
 )
 
-type BinaceProvider struct {
+type BinanceProvider struct {
 	baseURL string
 }
 
-func NewBinanceProvider() *BinaceProvider {
-	return &BinaceProvider{
+func NewBinanceProvider() *BinanceProvider {
+	return &BinanceProvider{
 		baseURL: "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
 	}
 }
@@ -66,7 +66,7 @@ type JsonResponseP2P struct {
 }
 
 // Generate only USDT-VES
-func (p *BinaceProvider) generateBodyP2P(tradeType TradeType) (BodyRequestP2P, error) {
+func (p *BinanceProvider) generateBodyP2P(tradeType TradeType) (BodyRequestP2P, error) {
 	if !tradeType.IsValid() {
 		return BodyRequestP2P{}, errors.New("Invalid trade type")
 	}
@@ -81,7 +81,7 @@ func (p *BinaceProvider) generateBodyP2P(tradeType TradeType) (BodyRequestP2P, e
 	}, nil
 }
 
-func (p *BinaceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
+func (p *BinanceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 	// Get the basic body for the P2P Asset/Fiat
 	bodyData, err := p.generateBodyP2P(tradeType)
 	if err != nil {
@@ -156,7 +156,7 @@ func (p *BinaceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 
 }
 
-func (p *BinaceProvider) GetPrices() (PriceResponse, error) {
+func (p *BinanceProvider) GetPrices() (PriceResponse, error) {
 	sellPrices, err := p.fetchPrices(TypeSell)
 	if err != nil {
 		return nil, err
@@ -184,6 +184,6 @@ func (p *BinaceProvider) GetPrices() (PriceResponse, error) {
 
 }
 
-func (p *BinaceProvider) GetName() string {
+func (p *BinanceProvider) GetName() string {
 	return "USDT"
 }
