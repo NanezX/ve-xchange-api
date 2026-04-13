@@ -207,7 +207,6 @@ Phase 5 — Persistence
 
 ## Additional Notes
 
-- **Existing bug in `worker.go`**: The calls to `updateBcv(dolarVzlaProvider)` and `updateBinance(binanceProvider)` are **duplicated** before the `for-select` loop (lines 21-22 and 25-26). Each price is fetched twice at startup unnecessarily.
 - **Typo in `types.go`**: `ExchageRates` should be `ExchangeRates`.
 - **Typo in `binanceProvider.go`**: The struct is named `BinaceProvider` — it should be `BinanceProvider`.
 - **TODO in `types.go`**: There is an existing TODO to separate mutexes per provider. This is naturally resolved by removing globals (improvement 3.4) and moving each provider to its own package (improvement 3.3).
