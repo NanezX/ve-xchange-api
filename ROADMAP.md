@@ -207,6 +207,4 @@ Phase 5 — Persistence
 
 ## Additional Notes
 
-- **Typo in `types.go`**: `ExchageRates` should be `ExchangeRates`.
-- **Typo in `binanceProvider.go`**: The struct is named `BinaceProvider` — it should be `BinanceProvider`.
 - **TODO in `types.go`**: There is an existing TODO to separate mutexes per provider. This is naturally resolved by removing globals (improvement 3.4) and moving each provider to its own package (improvement 3.3).
