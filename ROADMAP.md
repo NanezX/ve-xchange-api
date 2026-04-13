@@ -24,7 +24,7 @@
 
 | | Details |
 |---|---|
-| **Improvement** | Create unit tests for `BinaceProvider` and `DolarVzlaProvider` by injecting a mock HTTP client. |
+| **Improvement** | Create unit tests for `BinanceProvider` and `DolarVzlaProvider` by injecting a mock HTTP client. |
 | **Current state** | No tests exist in the project. Both providers (`binanceProvider.go`, `dolarVzlaProvider.go`) create an `http.Client{Timeout: 10 * time.Second}` internally within each method (`fetchPrices`, `GetPrices`), making it **impossible** to substitute the client with a mock in tests. |
 | **Rationale** | Testing providers without calling the real APIs is critical because: **(a)** external APIs are slow and introduce flakiness into tests, **(b)** they have rate-limits and in the case of DolarVzla require a paid API key, **(c)** their responses change constantly, making it impossible to verify expected values. Without mocks, tests would be fragile, slow, and non-deterministic. The solution is to define an `HTTPDoer` interface (with method `Do(*http.Request) (*http.Response, error)`) and inject it into providers via constructor. In production, the real `http.Client` is passed; in tests, a mock returning predefined responses is used. |
 
@@ -33,7 +33,7 @@
 | | Details |
 |---|---|
 | **Improvement** | Refactor `updateBcv` and `updateBinance` in `worker.go` to accept `PriceProvider` (the interface) instead of concrete types. |
-| **Current state** | The `PriceProvider` interface already exists in `types.go` with methods `GetPrices()` and `GetName()`, but the worker uses concrete types directly (`*BinaceProvider`, `*DolarVzlaProvider`). Functions `updateBcv(p *DolarVzlaProvider)` and `updateBinance(p *BinaceProvider)` accept concrete pointers. |
+| **Current state** | The `PriceProvider` interface already exists in `types.go` with methods `GetPrices()` and `GetName()`, but the worker uses concrete types directly (`*BinanceProvider`, `*DolarVzlaProvider`). Functions `updateBcv(p *DolarVzlaProvider)` and `updateBinance(p *BinanceProvider)` accept concrete pointers. |
 | **Rationale** | If the update functions accepted `PriceProvider`, they could be tested with mock structs that implement the interface, without depending on real APIs. This allows verifying that the worker updates `AppState` correctly (prices, timestamps) and handles errors without crashing — all without network access. The interface already exists; it just needs to be used. |
 
 ### 1.3 — Test the `/rates` Handler
@@ -81,7 +81,7 @@
 | | Details |
 |---|---|
 | **Improvement** | Create a single `http.Client` in `main()` with centralized configuration and pass it to all providers via constructor. |
-| **Current state** | Both `BinaceProvider.fetchPrices()` and `DolarVzlaProvider.GetPrices()` create a **new** `http.Client{Timeout: 10 * time.Second}` on **every call**. |
+| **Current state** | Both `BinanceProvider.fetchPrices()` and `DolarVzlaProvider.GetPrices()` create a **new** `http.Client{Timeout: 10 * time.Second}` on **every call**. |
 | **Rationale** | Creating a new `http.Client` per request wastes Go's `http.Transport` **connection pooling**. The runtime reuses TCP connections (keep-alive) **only** if the same client/transport is shared. A client injected once: **(a)** reuses TCP connections, reducing latency and file descriptor consumption, **(b)** allows centralized configuration of timeouts, transport, and proxy, **(c)** enables testing with a mock (ties into improvement 1.1). Creating clients per request is a recognized anti-pattern in Go: the `net/http` documentation itself states *"Clients should be reused instead of created as needed."* |
 
 ### 3.2 — Generic `FetchJSON[T]` Function
