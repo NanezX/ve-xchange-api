@@ -1,10 +1,15 @@
-package main
+package worker
 
 import (
 	"fmt"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"time"
 )
+
+type PriceProvider interface {
+	GetPrices() (provider.PriceResponse, error)
+	GetName() string
+}
 
 type ProviderJob struct {
 	Provider PriceProvider

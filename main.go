@@ -5,6 +5,7 @@ import (
 	"github.com/nanezx/ve-xchange-api/internal/config"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"github.com/nanezx/ve-xchange-api/internal/state"
+	"github.com/nanezx/ve-xchange-api/internal/worker"
 	"net/http"
 	"time"
 )
@@ -22,7 +23,7 @@ func main() {
 	}
 
 	// Add provider to lists
-	providerJobs := []ProviderJob{
+	providerJobs := []worker.ProviderJob{
 		// DolarVzla API
 		{
 			Provider: provider.NewDolarVzlaProvider(client, config.AppConfig.DolarVzlaApiKey),
@@ -38,7 +39,7 @@ func main() {
 	}
 
 	// Start worker
-	go StartPriceWorker(providerJobs)
+	go worker.StartPriceWorker(providerJobs)
 
 	mux := http.NewServeMux()
 
