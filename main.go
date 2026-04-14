@@ -25,10 +25,21 @@ func main() {
 	binanceProvider := NewBinanceProvider(client)
 
 	// Add provider to lists
-	providers := []PriceProvider{dolarVzlaProvider, binanceProvider}
+	providerJobs := []ProviderJob{
+		{
+			Provider: dolarVzlaProvider,
+			Every:    6 * time.Hour,
+			Apply:    UpdateBcvPrice,
+		},
+		{
+			Provider: binanceProvider,
+			Every:    5 * time.Minute,
+			Apply:    UpdateBinancePrice,
+		},
+	}
 
 	// Start worker
-	go StartPriceWorker(providers)
+	go StartPriceWorker(providerJobs)
 
 	mux := http.NewServeMux()
 
