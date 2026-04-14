@@ -84,7 +84,7 @@
 | **Current state** | Both `BinanceProvider.fetchPrices()` and `DolarVzlaProvider.GetPrices()` create a **new** `http.Client{Timeout: 10 * time.Second}` on **every call**. |
 | **Rationale** | Creating a new `http.Client` per request wastes Go's `http.Transport` **connection pooling**. The runtime reuses TCP connections (keep-alive) **only** if the same client/transport is shared. A client injected once: **(a)** reuses TCP connections, reducing latency and file descriptor consumption, **(b)** allows centralized configuration of timeouts, transport, and proxy, **(c)** enables testing with a mock (ties into improvement 1.1). Creating clients per request is a recognized anti-pattern in Go: the `net/http` documentation itself states *"Clients should be reused instead of created as needed."* |
 
-### 3.2 — Generic `FetchJSON[T]` Function
+### 3.2 — Generic `FetchJSON[T]` Function [DONE]
 
 | | Details |
 |---|---|
