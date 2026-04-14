@@ -1,37 +1,44 @@
 package main
 
 import (
-	// "fmt"
-	// "net/http"
-	// "time"
+	"fmt"
+	"time"
 )
 
-func StartPriceWorker(providers []PriceProvider) {
-
-	for  {
-		// time.
-	}
-
-	// bcvTicker := time.NewTicker(6 * time.Hour)
-	// binanceTicker := time.NewTicker(5 * time.Minute)
-	// // Defer the tickers
-	// defer bcvTicker.Stop()
-	// defer binanceTicker.Stop()
-
-	// // Start prices
-	// updateBcv(dolarVzlaProvider)
-	// updateBinance(binanceProvider)
-
-	// for {
-	// 	select {
-	// 	case <-bcvTicker.C:
-	// 		fmt.Println("Updating BCV price with DolarVzla Provider")
-	// 		updateBcv(dolarVzlaProvider)
-	// 	case <-binanceTicker.C:
-	// 		fmt.Println("Updating USDT price with Binance P2P Provider")
-	// 		updateBinance(binanceProvider)
-	// 	}
-
-	// }
+type ProviderJob struct {
+	Provider PriceProvider
+	Every    time.Duration
+	Apply    func(PriceResponse)
 }
 
+func StartPriceWorker(jobs []ProviderJob) {
+
+	for _, job := range jobs {
+		currentJob := job
+
+		go func() {
+			resp, err := currentJob.Provider.GetPrices()
+			if err != nil {
+				fmt.Printf("Error initializing %s: %v\n", currentJob.Provider.GetName(), err)
+			} else {
+				currentJob.Apply(resp)
+			}
+
+			ticker := time.NewTicker(currentJob.Every)
+			defer ticker.Stop()
+
+			for range ticker.C {
+				resp, err := currentJob.Provider.GetPrices()
+				if err != nil {
+					fmt.Printf("Error updating %s: %v\n", currentJob.Provider.GetName(), err)
+					continue
+				}
+
+				currentJob.Apply(resp)
+				fmt.Printf("Updated %s price\n", currentJob.Provider.GetName())
+			}
+
+		}()
+
+	}
+}
