@@ -7,7 +7,11 @@ import (
 	"net/http"
 )
 
-func fetchJson[T any](client *http.Client, req *http.Request) (T, error) {
+type HTTPDoer interface {
+    Do(*http.Request) (*http.Response, error)
+}
+
+func fetchJson[T any](client HTTPDoer, req *http.Request) (T, error) {
 	var result T
 
 	resp, err := client.Do(req)
