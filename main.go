@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/nanezx/ve-xchange-api/internal/config"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"net/http"
 	"time"
 )
 
 func main() {
-	err := LoadConfig()
+	err := config.LoadConfig()
 
 	if err != nil {
 		fmt.Printf("Failed to load env file... [Error]: %v", err)
@@ -23,7 +24,7 @@ func main() {
 	providerJobs := []ProviderJob{
 		// DolarVzla API
 		{
-			Provider: provider.NewDolarVzlaProvider(client, AppConfig.DolarVzlaApiKey),
+			Provider: provider.NewDolarVzlaProvider(client, config.AppConfig.DolarVzlaApiKey),
 			Every:    6 * time.Hour,
 			Apply:    UpdateBcvPrice,
 		},
@@ -43,6 +44,6 @@ func main() {
 	mux.Handle("/hello", HelloWorldHandler{})
 	mux.Handle("/rates", RatesHandler{})
 
-	fmt.Printf("Servidor corriendo en http://localhost:%d\n", AppConfig.AppPort)
-	http.ListenAndServe(fmt.Sprintf(":%d", AppConfig.AppPort), mux)
+	fmt.Printf("Servidor corriendo en http://localhost:%d\n", config.AppConfig.AppPort)
+	http.ListenAndServe(fmt.Sprintf(":%d", config.AppConfig.AppPort), mux)
 }
