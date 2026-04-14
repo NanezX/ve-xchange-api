@@ -18,6 +18,4 @@ type PriceResponse map[string]float64
 type PriceProvider interface {
 	GetPrices() (PriceResponse, error)
 	GetName() string
-	UpdatePrice()
-	GetTickDuration() time.Duration
 }
