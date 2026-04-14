@@ -47,7 +47,7 @@ func (p *DolarVzlaProvider) GetPrices() (PriceResponse, error) {
 	data, err := fetchJson[JsonResponseDolarVzla](p.client, req)
 
 	if err != nil {
-		return nil, fmt.Errorf("DolarVzla prices - Error  %v\n", err)
+		return nil, fmt.Errorf("DolarVzla prices - Error  %w", err)
 	}
 
 	return PriceResponse{
