@@ -24,6 +24,7 @@ func (s *State) GetRates() ExchangeRates {
 	return s.Rates
 }
 
+// FIXME: Add safety checks that exists those values on the maps
 func UpdateBcvPrice(data PriceResponse) {
 	AppState.Lock()
 	defer AppState.Unlock()
@@ -33,6 +34,7 @@ func UpdateBcvPrice(data PriceResponse) {
 	AppState.Rates.LastUpdate = time.Now()
 }
 
+// FIXME: Add safety checks that exists those values on the maps
 func UpdateBinancePrice(data PriceResponse) {
 	AppState.Lock()
 	defer AppState.Unlock()
