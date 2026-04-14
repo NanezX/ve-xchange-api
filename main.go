@@ -22,7 +22,7 @@ func main() {
 	providerJobs := []ProviderJob{
 		// DolarVzla API
 		{
-			Provider: NewDolarVzlaProvider(client, &AppConfig.DolarVzlaApiKey),
+			Provider: NewDolarVzlaProvider(client, AppConfig.DolarVzlaApiKey),
 			Every:    6 * time.Hour,
 			Apply:    UpdateBcvPrice,
 		},
