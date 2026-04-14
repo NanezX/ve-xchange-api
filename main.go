@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -13,7 +14,11 @@ func main() {
 		return
 	}
 
-	go StartPriceWorker()
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	go StartPriceWorker(client)
 
 	mux := http.NewServeMux()
 

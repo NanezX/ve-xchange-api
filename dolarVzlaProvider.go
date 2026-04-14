@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 type DolarVzlaProvider struct {
 	baseURL string
 	apiKey  string
+	client  *http.Client
 }
 
-func NewDolarVzlaProvider() *DolarVzlaProvider {
+func NewDolarVzlaProvider(client *http.Client) *DolarVzlaProvider {
 	return &DolarVzlaProvider{
 		baseURL: "https://api.dolarvzla.com/public/bcv/exchange-rate",
 		apiKey:  AppConfig.DolarVzlaApiKey,
+		client:  client,
 	}
 }
 
@@ -42,11 +43,7 @@ func (p *DolarVzlaProvider) GetPrices() (PriceResponse, error) {
 
 	req.Header.Set("x-dolarvzla-key", p.apiKey)
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, err
 	}

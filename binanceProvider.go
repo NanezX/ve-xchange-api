@@ -9,16 +9,17 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"time"
 )
 
 type BinanceProvider struct {
 	baseURL string
+	client  *http.Client
 }
 
-func NewBinanceProvider() *BinanceProvider {
+func NewBinanceProvider(client *http.Client) *BinanceProvider {
 	return &BinanceProvider{
 		baseURL: "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+		client:  client,
 	}
 }
 
@@ -104,11 +105,7 @@ func (p *BinanceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
-
-	resp, err := client.Do(req)
+	resp, err := p.client.Do(req)
 	if err != nil {
 		return nil, err
 	}

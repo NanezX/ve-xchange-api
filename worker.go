@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"time"
 )
 
-func StartPriceWorker() {
+func StartPriceWorker(client *http.Client) {
 	// DolarVzla API
-	dolarVzlaProvider := NewDolarVzlaProvider()
+	dolarVzlaProvider := NewDolarVzlaProvider(client)
 
 	// P2P Binance API
-	binanceProvider := NewBinanceProvider()
+	binanceProvider := NewBinanceProvider(client)
 
 	// // Timers/Tickers
 	bcvTicker := time.NewTicker(6 * time.Hour)
