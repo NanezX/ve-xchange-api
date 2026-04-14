@@ -18,21 +18,17 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 
-	// DolarVzla API
-	dolarVzlaProvider := NewDolarVzlaProvider(client, AppConfig)
-
-	// P2P Binance API
-	binanceProvider := NewBinanceProvider(client)
-
 	// Add provider to lists
 	providerJobs := []ProviderJob{
+		// DolarVzla API
 		{
-			Provider: dolarVzlaProvider,
+			Provider: NewDolarVzlaProvider(client, &AppConfig.DolarVzlaApiKey),
 			Every:    6 * time.Hour,
 			Apply:    UpdateBcvPrice,
 		},
+		// P2P Binance API
 		{
-			Provider: binanceProvider,
+			Provider: NewBinanceProvider(client),
 			Every:    5 * time.Minute,
 			Apply:    UpdateBinancePrice,
 		},
