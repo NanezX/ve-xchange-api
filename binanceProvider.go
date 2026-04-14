@@ -5,15 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"slices"
 	"strconv"
 )
 
 type BinanceProvider struct {
-	baseURL   string
-	client    *http.Client
+	baseURL string
+	client  *http.Client
 }
 
 func NewBinanceProvider(client *http.Client) *BinanceProvider {
@@ -105,26 +104,11 @@ func (p *BinanceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := p.client.Do(req)
+	// Fetch JSON
+	data, err := fetchJson[JsonResponseP2P](p.client, req)
+
 	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// Leemos el cuerpo del error para ver qué dice Binance
-		errorBody, _ := io.ReadAll(resp.Body)
-		fmt.Printf("Error de Binance: %s\n", string(errorBody))
-		return nil, fmt.Errorf("error %d", resp.StatusCode)
-	}
-
-	var data JsonResponseP2P
-
-	decoder := json.NewDecoder(resp.Body)
-
-	err = decoder.Decode(&data)
-	if err != nil {
+		fmt.Printf("Failed to get the [%s] P2P prices. Error %v", tradeType, err)
 		return nil, err
 	}
 
