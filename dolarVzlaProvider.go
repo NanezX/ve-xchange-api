@@ -13,10 +13,10 @@ type DolarVzlaProvider struct {
 	client  *http.Client
 }
 
-func NewDolarVzlaProvider(client *http.Client) *DolarVzlaProvider {
+func NewDolarVzlaProvider(client *http.Client, appConfig *Config) *DolarVzlaProvider {
 	return &DolarVzlaProvider{
 		baseURL: "https://api.dolarvzla.com/public/bcv/exchange-rate",
-		apiKey:  AppConfig.DolarVzlaApiKey,
+		apiKey:  appConfig.DolarVzlaApiKey,
 		client:  client,
 	}
 }

@@ -8,7 +8,7 @@ import (
 
 func StartPriceWorker(client *http.Client) {
 	// DolarVzla API
-	dolarVzlaProvider := NewDolarVzlaProvider(client)
+	dolarVzlaProvider := NewDolarVzlaProvider(client, AppConfig)
 
 	// P2P Binance API
 	binanceProvider := NewBinanceProvider(client)
