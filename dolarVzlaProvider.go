@@ -1,9 +1,7 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 )
 
@@ -36,31 +34,20 @@ type JsonResponseDolarVzla struct {
 }
 
 func (p *DolarVzlaProvider) GetPrices() (PriceResponse, error) {
+	// Generate request
 	req, err := http.NewRequest(http.MethodGet, p.baseURL, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	// Set api key
 	req.Header.Set("x-dolarvzla-key", p.apiKey)
 
-	resp, err := p.client.Do(req)
+	// Fetch JSON
+	data, err := fetchJson[JsonResponseDolarVzla](p.client, req)
+
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		// Leemos el cuerpo del error para ver qué dice Binance
-		errorBody, _ := io.ReadAll(resp.Body)
-		fmt.Printf("Error de DolarVzla API: %s\n", string(errorBody))
-		return nil, fmt.Errorf("error %d", resp.StatusCode)
-	}
-
-	var data JsonResponseDolarVzla
-	decoder := json.NewDecoder(resp.Body)
-
-	err = decoder.Decode(&data)
-	if err != nil {
+		fmt.Printf("Error getting DolarVzla prices: %v\n", err)
 		return nil, err
 	}
 
