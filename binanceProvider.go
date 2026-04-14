@@ -12,10 +12,10 @@ import (
 
 type BinanceProvider struct {
 	baseURL string
-	client  *http.Client
+	client  HTTPDoer
 }
 
-func NewBinanceProvider(client *http.Client) *BinanceProvider {
+func NewBinanceProvider(client HTTPDoer) *BinanceProvider {
 	return &BinanceProvider{
 		baseURL: "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
 		client:  client,

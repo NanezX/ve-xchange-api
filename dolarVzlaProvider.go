@@ -8,10 +8,10 @@ import (
 type DolarVzlaProvider struct {
 	baseURL string
 	apiKey  string
-	client  *http.Client
+	client  HTTPDoer
 }
 
-func NewDolarVzlaProvider(client *http.Client, apiKey string) *DolarVzlaProvider {
+func NewDolarVzlaProvider(client HTTPDoer, apiKey string) *DolarVzlaProvider {
 	return &DolarVzlaProvider{
 		baseURL: "https://api.dolarvzla.com/public/bcv/exchange-rate",
 		apiKey:  apiKey,
