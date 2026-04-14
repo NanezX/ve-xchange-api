@@ -49,5 +49,9 @@ func main() {
 	mux.Handle("/rates", handler.RatesHandler{})
 
 	fmt.Printf("Servidor corriendo en http://localhost:%d\n", config.AppConfig.AppPort)
-	http.ListenAndServe(fmt.Sprintf(":%d", config.AppConfig.AppPort), mux)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", config.AppConfig.AppPort), mux)
+	if err != nil {
+		fmt.Printf("Failed to serve the API [Error]: %v", err)
+		return
+	}
 }
