@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 type DolarVzlaProvider struct {
@@ -74,21 +73,3 @@ func (p *DolarVzlaProvider) GetPrices() (PriceResponse, error) {
 func (p *DolarVzlaProvider) GetName() string {
 	return "DolarVzla"
 }
-
-func (p *DolarVzlaProvider) UpdatePrice() {
-	data, err := p.GetPrices()
-
-	if err != nil {
-		fmt.Printf("Error Dolar Vzla: %v", err)
-		return
-	}
-
-	AppState.Lock()
-	defer AppState.Unlock()
-
-	AppState.Rates.UsdBCV = data["USD_BCV"]
-	AppState.Rates.EurBCV = data["EUR_BCV"]
-	AppState.Rates.LastUpdate = time.Now()
-}
-
-
