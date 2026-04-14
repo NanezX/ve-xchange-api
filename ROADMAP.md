@@ -76,7 +76,7 @@
 
 ## Pillar 3: Architecture & Refactoring
 
-### 3.1 — Single, Reusable `HttpClient` (Injected)
+### 3.1 — Single, Reusable `HttpClient` (Injected) [DONE]
 
 | | Details |
 |---|---|
