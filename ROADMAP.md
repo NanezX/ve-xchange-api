@@ -92,7 +92,7 @@
 | **Current state** | Both providers repeat the same pattern: create request → execute with client → check `StatusCode` → read error body on failure → create decoder → decode JSON → handle error. That's approximately 25 duplicated lines in each provider. |
 | **Rationale** | Duplication violates DRY and multiplies the places where a bug can hide. A generic function: **(a)** reduces the duplication to a single testable implementation, **(b)** centralizes HTTP error handling (status codes, error body), **(c)** any future improvement (retry, logging, metrics, tracing) is automatically applied to all providers without touching their code. Go 1.18+ supports generics, enabling strong typing without sacrificing reusability. |
 
-### 3.3 — Migration to Standard Folder Structure (`/internal`, `/cmd`)
+### 3.3 — Migration to Standard Folder Structure (`/internal`, `/cmd`) [DONE]
 
 | | Details |
 |---|---|
