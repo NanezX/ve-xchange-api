@@ -18,7 +18,17 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 
-	go StartPriceWorker(client)
+	// DolarVzla API
+	dolarVzlaProvider := NewDolarVzlaProvider(client, AppConfig)
+
+	// P2P Binance API
+	binanceProvider := NewBinanceProvider(client)
+
+	// Add provider to lists
+	providers := []PriceProvider{dolarVzlaProvider, binanceProvider}
+
+	// Start worker
+	go StartPriceWorker(providers)
 
 	mux := http.NewServeMux()
 
