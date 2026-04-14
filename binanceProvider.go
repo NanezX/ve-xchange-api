@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
-	"time"
 )
 
 type BinanceProvider struct {
@@ -186,20 +185,3 @@ func (p *BinanceProvider) GetPrices() (PriceResponse, error) {
 func (p *BinanceProvider) GetName() string {
 	return "USDT"
 }
-
-func (p *BinanceProvider) UpdatePrice() {
-	data, err := p.GetPrices()
-
-	if err != nil {
-		fmt.Printf("Error Binance P2P: %v", err)
-		return
-	}
-
-	AppState.Lock()
-	defer AppState.Unlock()
-
-	AppState.Rates.UsdtBinance = data["USDT_BINANCE"]
-	AppState.Rates.LastUpdate = time.Now()
-}
-
-
