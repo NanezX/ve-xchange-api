@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+	"time"
+
 	"github.com/nanezx/ve-xchange-api/internal/config"
+	"github.com/nanezx/ve-xchange-api/internal/handler"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"github.com/nanezx/ve-xchange-api/internal/state"
 	"github.com/nanezx/ve-xchange-api/internal/worker"
-	"net/http"
-	"time"
 )
 
 func main() {
@@ -43,8 +45,8 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/hello", HelloWorldHandler{})
-	mux.Handle("/rates", RatesHandler{})
+	mux.Handle("/hello", handler.HelloWorldHandler{})
+	mux.Handle("/rates", handler.RatesHandler{})
 
 	fmt.Printf("Servidor corriendo en http://localhost:%d\n", config.AppConfig.AppPort)
 	http.ListenAndServe(fmt.Sprintf(":%d", config.AppConfig.AppPort), mux)
