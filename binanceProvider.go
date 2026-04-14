@@ -14,7 +14,6 @@ import (
 type BinanceProvider struct {
 	baseURL   string
 	client    *http.Client
-	appConfig *Config
 }
 
 func NewBinanceProvider(client *http.Client) *BinanceProvider {
