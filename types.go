@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"time"
 )
 
@@ -13,9 +14,7 @@ type ExchangeRates struct {
 	LastUpdate  time.Time `json:"last_update"`
 }
 
-type PriceResponse map[string]float64
-
 type PriceProvider interface {
-	GetPrices() (PriceResponse, error)
+	GetPrices() (provider.PriceResponse, error)
 	GetName() string
 }

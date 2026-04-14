@@ -1,4 +1,4 @@
-package main
+package provider
 
 import (
 	"encoding/json"
@@ -7,8 +7,10 @@ import (
 	"net/http"
 )
 
+type PriceResponse map[string]float64
+
 type HTTPDoer interface {
-    Do(*http.Request) (*http.Response, error)
+	Do(*http.Request) (*http.Response, error)
 }
 
 func fetchJson[T any](client HTTPDoer, req *http.Request) (T, error) {

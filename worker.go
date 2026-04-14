@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"time"
 )
 
 type ProviderJob struct {
 	Provider PriceProvider
 	Every    time.Duration
-	Apply    func(PriceResponse)
+	Apply    func(provider.PriceResponse)
 }
 
 func StartPriceWorker(jobs []ProviderJob) {

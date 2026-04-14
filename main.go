@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"net/http"
 	"time"
 )
@@ -22,13 +23,13 @@ func main() {
 	providerJobs := []ProviderJob{
 		// DolarVzla API
 		{
-			Provider: NewDolarVzlaProvider(client, AppConfig.DolarVzlaApiKey),
+			Provider: provider.NewDolarVzlaProvider(client, AppConfig.DolarVzlaApiKey),
 			Every:    6 * time.Hour,
 			Apply:    UpdateBcvPrice,
 		},
 		// P2P Binance API
 		{
-			Provider: NewBinanceProvider(client),
+			Provider: provider.NewBinanceProvider(client),
 			Every:    5 * time.Minute,
 			Apply:    UpdateBinancePrice,
 		},
