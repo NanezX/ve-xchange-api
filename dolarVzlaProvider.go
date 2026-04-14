@@ -91,6 +91,4 @@ func (p *DolarVzlaProvider) UpdatePrice() {
 	AppState.Rates.LastUpdate = time.Now()
 }
 
-func (p *DolarVzlaProvider) GetTickDuration() time.Duration {
-	return 6 * time.Hour
-}
+

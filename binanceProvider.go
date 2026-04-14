@@ -202,6 +202,4 @@ func (p *BinanceProvider) UpdatePrice() {
 	AppState.Rates.LastUpdate = time.Now()
 }
 
-func (p *BinanceProvider) GetTickDuration() time.Duration {
-	return 5 * time.Minute
-}
+
