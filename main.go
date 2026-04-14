@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/nanezx/ve-xchange-api/internal/config"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
+	"github.com/nanezx/ve-xchange-api/internal/state"
 	"net/http"
 	"time"
 )
@@ -26,13 +27,13 @@ func main() {
 		{
 			Provider: provider.NewDolarVzlaProvider(client, config.AppConfig.DolarVzlaApiKey),
 			Every:    6 * time.Hour,
-			Apply:    UpdateBcvPrice,
+			Apply:    state.UpdateBcvPrice,
 		},
 		// P2P Binance API
 		{
 			Provider: provider.NewBinanceProvider(client),
 			Every:    5 * time.Minute,
-			Apply:    UpdateBinancePrice,
+			Apply:    state.UpdateBinancePrice,
 		},
 	}
 

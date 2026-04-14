@@ -1,10 +1,17 @@
-package main
+package state
 
 import (
 	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"sync"
 	"time"
 )
+
+type ExchangeRates struct {
+	UsdBCV      float64   `json:"usd_bcv"`
+	EurBCV      float64   `json:"eur_bcv"`
+	UsdtBinance float64   `json:"usdt_binance"`
+	LastUpdate  time.Time `json:"last_update"`
+}
 
 type State struct {
 	sync.RWMutex

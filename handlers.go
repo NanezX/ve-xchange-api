@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/nanezx/ve-xchange-api/internal/state"
 	"net/http"
 )
 
@@ -15,10 +16,10 @@ func (HelloWorldHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type RatesHandler struct{}
 
 func (RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	AppState.RLock()
-	defer AppState.RUnlock()
+	state.AppState.RLock()
+	defer state.AppState.RUnlock()
 
 	w.Header().Set("Content-Type", "application/json")
 
-	json.NewEncoder(w).Encode(AppState.Rates)
+	json.NewEncoder(w).Encode(state.AppState.Rates)
 }
