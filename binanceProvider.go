@@ -108,12 +108,11 @@ func (p *BinanceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 	data, err := fetchJson[JsonResponseP2P](p.client, req)
 
 	if err != nil {
-		fmt.Printf("Failed to get the [%s] P2P prices. Error %v", tradeType, err)
-		return nil, err
+		return nil, fmt.Errorf("P2P [%s] prices - Error %v\n", tradeType, err)
 	}
 
 	if !data.Success {
-		return nil, fmt.Errorf("Failed to get the [%s] P2P prices\n", tradeType)
+		return nil, fmt.Errorf("P2P [%s] prices - Error No success\n", tradeType)
 
 	}
 
@@ -130,7 +129,7 @@ func (p *BinanceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 	}
 
 	if len(response) == 0 {
-		return nil, fmt.Errorf("Failed to get the [%s] P2P prices\n", tradeType)
+		return nil, fmt.Errorf("P2P [%s] prices - No prices found\n", tradeType)
 	}
 
 	return response, nil
