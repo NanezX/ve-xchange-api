@@ -2,6 +2,7 @@ package provider
 
 import (
 	"fmt"
+	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"net/http"
 )
 
@@ -33,7 +34,7 @@ type JsonResponseDolarVzla struct {
 	Current DataDolarVzlaBCV `json:"current"`
 }
 
-func (p *DolarVzlaProvider) GetPrices() (PriceResponse, error) {
+func (p *DolarVzlaProvider) GetPrices() (rates.PriceResponse, error) {
 	// Generate request
 	req, err := http.NewRequest(http.MethodGet, p.baseURL, nil)
 	if err != nil {
@@ -50,7 +51,7 @@ func (p *DolarVzlaProvider) GetPrices() (PriceResponse, error) {
 		return nil, fmt.Errorf("DolarVzla prices - Error  %w", err)
 	}
 
-	return PriceResponse{
+	return rates.PriceResponse{
 		"USD_BCV": data.Current.USD,
 		"EUR_BCV": data.Current.EUR,
 	}, nil

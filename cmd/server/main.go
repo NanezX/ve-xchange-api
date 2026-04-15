@@ -2,14 +2,13 @@ package main
 
 import (
 	"fmt"
-	"net/http"
-	"time"
-
 	"github.com/nanezx/ve-xchange-api/internal/config"
 	"github.com/nanezx/ve-xchange-api/internal/handler"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"github.com/nanezx/ve-xchange-api/internal/state"
 	"github.com/nanezx/ve-xchange-api/internal/worker"
+	"net/http"
+	"time"
 )
 
 func main() {

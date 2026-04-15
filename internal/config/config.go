@@ -3,10 +3,9 @@ package config
 import (
 	"errors"
 	"fmt"
+	"github.com/joho/godotenv"
 	"os"
 	"strconv"
-
-	"github.com/joho/godotenv"
 )
 
 type Config struct {

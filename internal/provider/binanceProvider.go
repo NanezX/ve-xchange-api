@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"net/http"
 	"slices"
 	"strconv"
@@ -136,7 +137,7 @@ func (p *BinanceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 
 }
 
-func (p *BinanceProvider) GetPrices() (PriceResponse, error) {
+func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 	sellPrices, err := p.fetchPrices(TypeSell)
 	if err != nil {
 		return nil, err
@@ -160,7 +161,7 @@ func (p *BinanceProvider) GetPrices() (PriceResponse, error) {
 		acc += val
 	}
 
-	return PriceResponse{"USDT_BINANCE": acc / float64(len(combined))}, nil
+	return rates.PriceResponse{"USDT_BINANCE": acc / float64(len(combined))}, nil
 
 }
 

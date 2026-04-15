@@ -7,8 +7,6 @@ import (
 	"net/http"
 )
 
-type PriceResponse map[string]float64
-
 type HTTPDoer interface {
 	Do(*http.Request) (*http.Response, error)
 }

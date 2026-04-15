@@ -1,7 +1,7 @@
 package state
 
 import (
-	"github.com/nanezx/ve-xchange-api/internal/provider"
+	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"sync"
 	"time"
 )
@@ -33,7 +33,7 @@ func (s *State) GetRates() ExchangeRates {
 }
 
 // FIXME: Add safety checks that exists those values on the maps
-func UpdateBcvPrice(data provider.PriceResponse) {
+func UpdateBcvPrice(data rates.PriceResponse) {
 	AppState.Lock()
 	defer AppState.Unlock()
 
@@ -43,7 +43,7 @@ func UpdateBcvPrice(data provider.PriceResponse) {
 }
 
 // FIXME: Add safety checks that exists those values on the maps
-func UpdateBinancePrice(data provider.PriceResponse) {
+func UpdateBinancePrice(data rates.PriceResponse) {
 	AppState.Lock()
 	defer AppState.Unlock()
 

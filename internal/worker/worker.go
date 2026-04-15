@@ -2,19 +2,19 @@ package worker
 
 import (
 	"fmt"
-	"github.com/nanezx/ve-xchange-api/internal/provider"
+	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"time"
 )
 
 type PriceProvider interface {
-	GetPrices() (provider.PriceResponse, error)
+	GetPrices() (rates.PriceResponse, error)
 	GetName() string
 }
 
 type ProviderJob struct {
 	Provider PriceProvider
 	Every    time.Duration
-	Apply    func(provider.PriceResponse)
+	Apply    func(rates.PriceResponse)
 }
 
 func StartPriceWorker(jobs []ProviderJob) {
