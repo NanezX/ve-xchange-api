@@ -3,9 +3,9 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/joho/godotenv"
 	"os"
 	"strconv"
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -13,31 +13,26 @@ type Config struct {
 	DolarVzlaApiKey string
 }
 
-var AppConfig *Config
-
-func LoadConfig() error {
+func LoadConfig() (Config, error) {
 	err := godotenv.Load()
 	if err != nil {
-		return err
+		return Config{}, err
 	}
 
 	dolarVzlaKey := os.Getenv("DOLAR_VZLA_API_KEY")
 	if dolarVzlaKey == "" {
-		return errors.New("Missing DOLAR_VZLA_API_KEY env")
+		return Config{}, errors.New("Missing DOLAR_VZLA_API_KEY env")
 	}
 
 	appPort, err := strconv.ParseUint(os.Getenv("APP_PORT"), 10, 64)
-
 	if err != nil {
-		// Always default to 8080, even if malformed
 		fmt.Println("Missing or malformed APP_PORT. Usin 8080 as default")
 		appPort = 8080
 	}
 
-	AppConfig = &Config{
+	return Config{
 		DolarVzlaApiKey: dolarVzlaKey,
 		AppPort:         uint(appPort),
-	}
+	}, nil
 
-	return nil
 }
