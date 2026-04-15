@@ -74,7 +74,7 @@
 
 ---
 
-## Pillar 3: Architecture & Refactoring
+## Pillar 3: Architecture & Refactoring [DONE]
 
 ### 3.1 — Single, Reusable `HttpClient` (Injected) [DONE]
 
@@ -100,7 +100,7 @@
 | **Current state** | All files are in the `main` package at the project root. There is no folder separation or package-level separation of concerns. |
 | **Rationale** | A flat `main` package creates the following problems as it grows: **(a)** types and functions cannot be imported from other projects or tools, **(b)** there is no encapsulation — everything is accessible from everywhere, **(c)** name collisions become frequent. The `internal/` structure is the de facto standard in Go: the compiler **prevents** external packages from importing code inside `internal/`, protecting the module's public API. `cmd/server/` separates the entrypoint from business logic, allowing future entrypoints (CLI, separate workers, etc.) to be added. |
 
-### 3.4 — Remove Global Variables (`AppState`, `AppConfig`)
+### 3.4 — Remove Global Variables (`AppState`, `AppConfig`) [DONE]
 
 | | Details |
 |---|---|
