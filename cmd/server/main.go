@@ -23,6 +23,8 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 
+	appState := state.NewState()
+
 	// Add provider to lists
 	providerJobs := []worker.ProviderJob{
 		// DolarVzla API
@@ -40,12 +42,12 @@ func main() {
 	}
 
 	// Start worker
-	go worker.StartPriceWorker(providerJobs)
+	go worker.StartPriceWorker(appState, providerJobs)
 
 	mux := http.NewServeMux()
 
 	mux.Handle("/hello", handler.HelloWorldHandler{})
-	mux.Handle("/rates", handler.RatesHandler{})
+	mux.Handle("/rates", handler.NewRatesHandler(appState))
 
 	fmt.Printf("Servidor corriendo en http://localhost:%d\n", appConfig.AppPort)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", appConfig.AppPort), mux)

@@ -1,9 +1,10 @@
 package state
 
 import (
-	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"sync"
 	"time"
+
+	"github.com/nanezx/ve-xchange-api/internal/rates"
 )
 
 type ExchangeRates struct {
@@ -18,7 +19,9 @@ type State struct {
 	Rates ExchangeRates
 }
 
-var AppState = &State{}
+func NewState() *State {
+	return &State{}
+}
 
 func (s *State) UpdateRates(newRates ExchangeRates) {
 	s.Lock()
@@ -33,20 +36,20 @@ func (s *State) GetRates() ExchangeRates {
 }
 
 // FIXME: Add safety checks that exists those values on the maps
-func UpdateBcvPrice(data rates.PriceResponse) {
-	AppState.Lock()
-	defer AppState.Unlock()
+func UpdateBcvPrice(state *State, data rates.PriceResponse) {
+	state.Lock()
+	defer state.Unlock()
 
-	AppState.Rates.UsdBCV = data["USD_BCV"]
-	AppState.Rates.EurBCV = data["EUR_BCV"]
-	AppState.Rates.LastUpdate = time.Now()
+	state.Rates.UsdBCV = data["USD_BCV"]
+	state.Rates.EurBCV = data["EUR_BCV"]
+	state.Rates.LastUpdate = time.Now()
 }
 
 // FIXME: Add safety checks that exists those values on the maps
-func UpdateBinancePrice(data rates.PriceResponse) {
-	AppState.Lock()
-	defer AppState.Unlock()
+func UpdateBinancePrice(state *State, data rates.PriceResponse) {
+	state.Lock()
+	defer state.Unlock()
 
-	AppState.Rates.UsdtBinance = data["USDT_BINANCE"]
-	AppState.Rates.LastUpdate = time.Now()
+	state.Rates.UsdtBinance = data["USDT_BINANCE"]
+	state.Rates.LastUpdate = time.Now()
 }
