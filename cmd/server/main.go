@@ -8,6 +8,7 @@ import (
 	"github.com/nanezx/ve-xchange-api/internal/config"
 	"github.com/nanezx/ve-xchange-api/internal/handler"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
+	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"github.com/nanezx/ve-xchange-api/internal/state"
 	"github.com/nanezx/ve-xchange-api/internal/worker"
 )
@@ -31,18 +32,18 @@ func main() {
 		{
 			Provider: provider.NewDolarVzlaProvider(client, appConfig.DolarVzlaApiKey),
 			Every:    6 * time.Hour,
-			Apply:    state.UpdateBcvPrice,
+			Apply:    func(pr rates.PriceResponse) { state.UpdateBcvPrice(appState, pr) },
 		},
 		// P2P Binance API
 		{
 			Provider: provider.NewBinanceProvider(client),
 			Every:    5 * time.Minute,
-			Apply:    state.UpdateBinancePrice,
+			Apply:    func(pr rates.PriceResponse) { state.UpdateBinancePrice(appState, pr) },
 		},
 	}
 
 	// Start worker
-	go worker.StartPriceWorker(appState, providerJobs)
+	go worker.StartPriceWorker(providerJobs)
 
 	mux := http.NewServeMux()
 

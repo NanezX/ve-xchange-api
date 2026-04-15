@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/nanezx/ve-xchange-api/internal/rates"
-	"github.com/nanezx/ve-xchange-api/internal/state"
 )
 
 type PriceProvider interface {
@@ -16,10 +15,10 @@ type PriceProvider interface {
 type ProviderJob struct {
 	Provider PriceProvider
 	Every    time.Duration
-	Apply    func(*state.State, rates.PriceResponse)
+	Apply    func(rates.PriceResponse)
 }
 
-func StartPriceWorker(appState *state.State, jobs []ProviderJob) {
+func StartPriceWorker(jobs []ProviderJob) {
 
 	for _, job := range jobs {
 		currentJob := job
@@ -29,7 +28,7 @@ func StartPriceWorker(appState *state.State, jobs []ProviderJob) {
 			if err != nil {
 				fmt.Printf("Error initializing %s: %v\n", currentJob.Provider.GetName(), err)
 			} else {
-				currentJob.Apply(appState, resp)
+				currentJob.Apply(resp)
 			}
 
 			ticker := time.NewTicker(currentJob.Every)
@@ -42,7 +41,7 @@ func StartPriceWorker(appState *state.State, jobs []ProviderJob) {
 					continue
 				}
 
-				currentJob.Apply(appState, resp)
+				currentJob.Apply(resp)
 				fmt.Printf("Updated %s price\n", currentJob.Provider.GetName())
 			}
 
