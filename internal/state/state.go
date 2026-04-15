@@ -16,7 +16,7 @@ type ExchangeRates struct {
 
 type State struct {
 	mu sync.RWMutex
-	Rates ExchangeRates
+	rates ExchangeRates
 }
 
 func NewState() *State {
@@ -26,13 +26,13 @@ func NewState() *State {
 func (s *State) UpdateRates(newRates ExchangeRates) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.Rates = newRates
+	s.rates = newRates
 }
 
 func (s *State) GetRates() ExchangeRates {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.Rates
+	return s.rates
 }
 
 // FIXME: Add safety checks that exists those values on the maps
@@ -40,9 +40,9 @@ func UpdateBcvPrice(state *State, data rates.PriceResponse) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
-	state.Rates.UsdBCV = data["USD_BCV"]
-	state.Rates.EurBCV = data["EUR_BCV"]
-	state.Rates.LastUpdate = time.Now()
+	state.rates.UsdBCV = data["USD_BCV"]
+	state.rates.EurBCV = data["EUR_BCV"]
+	state.rates.LastUpdate = time.Now()
 }
 
 // FIXME: Add safety checks that exists those values on the maps
@@ -50,6 +50,6 @@ func UpdateBinancePrice(state *State, data rates.PriceResponse) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
-	state.Rates.UsdtBinance = data["USDT_BINANCE"]
-	state.Rates.LastUpdate = time.Now()
+	state.rates.UsdtBinance = data["USDT_BINANCE"]
+	state.rates.LastUpdate = time.Now()
 }
