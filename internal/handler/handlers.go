@@ -23,10 +23,7 @@ func NewRatesHandler(appState *state.State) RatesHandler {
 }
 
 func (handler RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	handler.appState.RLock()
-	defer handler.appState.RUnlock()
-
 	w.Header().Set("Content-Type", "application/json")
 
-	json.NewEncoder(w).Encode(handler.appState.Rates)
+	json.NewEncoder(w).Encode(handler.appState.GetRates())
 }
