@@ -207,4 +207,3 @@ Phase 5 — Persistence
 
 ## Additional Notes
 
-- **TODO in `types.go`**: There is an existing TODO to separate mutexes per provider. This is naturally resolved by removing globals (improvement 3.4) and moving each provider to its own package (improvement 3.3).
