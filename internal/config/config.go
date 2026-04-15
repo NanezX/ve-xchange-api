@@ -3,9 +3,10 @@ package config
 import (
 	"errors"
 	"fmt"
-	"github.com/joho/godotenv"
 	"os"
 	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -16,7 +17,10 @@ type Config struct {
 func LoadConfig() (Config, error) {
 	err := godotenv.Load()
 	if err != nil {
-		return Config{}, err
+		if !errors.Is(err, os.ErrNotExist) {
+			return Config{}, fmt.Errorf("Malformed env file: %w", err)
+		}
+		// Continue
 	}
 
 	dolarVzlaKey := os.Getenv("DOLAR_VZLA_API_KEY")
