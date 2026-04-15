@@ -15,7 +15,7 @@ type ExchangeRates struct {
 }
 
 type State struct {
-	mu sync.RWMutex
+	mu    sync.RWMutex
 	rates ExchangeRates
 }
 
