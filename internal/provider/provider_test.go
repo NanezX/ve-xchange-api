@@ -1,7 +1,7 @@
 package provider
 
 import (
-	"fmt"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -29,13 +29,16 @@ func TestGetPriceSuccess(t *testing.T) {
 	usdPrice := 50.5
 	eurPrice := 2.1
 
-	fakeClient := NewFakeClient(fmt.Sprintf(`{
-        "current": {
-            "usd": %v,
-            "eur": %v,
-            "date": "2026-03-28 16:00:20.091Z"
-        }
-    }`, usdPrice, eurPrice))
+	fakeData := JsonResponseDolarVzla{
+		Current: DataDolarVzlaBCV{
+			USD:  usdPrice,
+			EUR:  eurPrice,
+			Date: "2026-03-28 16:00:20.091Z",
+		},
+	}
+	jsonBytes, _ := json.Marshal(fakeData)
+
+	fakeClient := NewFakeClient(string(jsonBytes))
 
 	provider := NewDolarVzlaProvider(fakeClient, "")
 
@@ -45,9 +48,6 @@ func TestGetPriceSuccess(t *testing.T) {
 		t.Fatalf("Expected succes, got %v", err)
 	}
 
-	if len(prices) == 0 {
-		t.Fatalf("Prices is empty")
-	}
 
 	if prices["USD_BCV"] != usdPrice {
 		t.Fatalf("Expected USD Price '%v', got '%v'", usdPrice, prices["USD_BCV"])
