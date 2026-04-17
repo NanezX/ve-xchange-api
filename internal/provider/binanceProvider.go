@@ -141,6 +141,7 @@ func (p *BinanceProvider) getOrders(tradeType TradeType, page uint) ([]float64, 
 func (p *BinanceProvider) getAllOrders(tradeType TradeType) ([]float64, error) {
 	collectedPrices := []float64{}
 
+	// FIXME: Use goroutines to improve speed here
 	for page := uint(1); page <= 5; page++ {
 		// Get the basic body for the P2P Asset/Fiat page
 		prices, err := p.getOrders(tradeType, page)
