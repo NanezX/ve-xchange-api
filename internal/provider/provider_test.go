@@ -121,3 +121,32 @@ func TestGetPriceEmptyResponse(t *testing.T) {
 		t.Fatalf("Expected error, got %v", err)
 	}
 }
+
+func TestGetPriceMissingEUR(t *testing.T) {
+	// Body with missing EUR
+	jsonBody := `{"current": {"usd": 50.5}}`
+
+	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
+
+	provider := NewDolarVzlaProvider(fakeClient, "")
+
+	_, err := provider.GetPrices()
+
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+}
+
+func TestGetPriceWrongType(t *testing.T) {
+	jsonBody := `{"current": {"usd": 50.5, "eur": "eur price"}}`
+
+	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
+
+	provider := NewDolarVzlaProvider(fakeClient, "")
+
+	_, err := provider.GetPrices()
+
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+}
