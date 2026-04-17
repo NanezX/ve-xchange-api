@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"net/http"
 	"slices"
 	"strconv"
+
+	"github.com/nanezx/ve-xchange-api/internal/rates"
 )
 
 type BinanceProvider struct {
@@ -67,7 +68,7 @@ type JsonResponseP2P struct {
 }
 
 // Generate only USDT-VES
-func (p *BinanceProvider) generateBodyP2P(tradeType TradeType) (BodyRequestP2P, error) {
+func (p *BinanceProvider) generateBodyP2P(tradeType TradeType, page uint) (BodyRequestP2P, error) {
 	if !tradeType.IsValid() {
 		return BodyRequestP2P{}, errors.New("Invalid trade type")
 	}
@@ -77,14 +78,14 @@ func (p *BinanceProvider) generateBodyP2P(tradeType TradeType) (BodyRequestP2P, 
 		Fiat:          "VES",
 		TradeType:     tradeType,
 		PublisherType: "merchant",
-		Page:          1,
+		Page:          page,
 		Rows:          20,
 	}, nil
 }
 
-func (p *BinanceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
-	// Get the basic body for the P2P Asset/Fiat
-	bodyData, err := p.generateBodyP2P(tradeType)
+func (p *BinanceProvider) getOrders(tradeType TradeType, page uint) ([]float64, error) {
+	// Get the basic body for the P2P Asset/Fiat page 1
+	bodyData, err := p.generateBodyP2P(tradeType, page)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +114,7 @@ func (p *BinanceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 	}
 
 	if !data.Success {
-		return nil, fmt.Errorf("P2P [%s] prices - Error No success", tradeType)
+		return nil, fmt.Errorf("P2P [%s] prices - Error No success Data: %v", tradeType, data)
 
 	}
 
@@ -137,13 +138,30 @@ func (p *BinanceProvider) fetchPrices(tradeType TradeType) ([]float64, error) {
 
 }
 
+func (p *BinanceProvider) getAllOrders(tradeType TradeType) ([]float64, error) {
+	collectedPrices := []float64{}
+
+	for page := uint(1); page <= 5; page++ {
+		// Get the basic body for the P2P Asset/Fiat page
+		prices, err := p.getOrders(tradeType, page)
+
+		if err != nil {
+			return nil, err
+		}
+
+		collectedPrices = slices.Concat(collectedPrices, prices)
+	}
+
+	return collectedPrices, nil
+}
+
 func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
-	sellPrices, err := p.fetchPrices(TypeSell)
+	sellPrices, err := p.getAllOrders(TypeSell)
 	if err != nil {
 		return nil, err
 	}
 
-	buyPrices, err := p.fetchPrices(TypeBuy)
+	buyPrices, err := p.getAllOrders(TypeBuy)
 	if err != nil {
 		return nil, err
 	}
