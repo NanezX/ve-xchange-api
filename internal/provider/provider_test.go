@@ -9,17 +9,20 @@ import (
 )
 
 type FakeHTTPDoer struct {
-	jsonBody string
+	StatusCode int
+	Body string
+	Error error
+
 }
 
-func NewFakeClient(jsonBody string) *FakeHTTPDoer {
-	return &FakeHTTPDoer{jsonBody}
+func NewFakeClient(body string) *FakeHTTPDoer {
+	return &FakeHTTPDoer{Body: body}
 }
 
 func (f *FakeHTTPDoer) Do(*http.Request) (*http.Response, error) {
 	resp := &http.Response{
 		StatusCode: 200,
-		Body:       io.NopCloser(strings.NewReader(f.jsonBody)),
+		Body:       io.NopCloser(strings.NewReader(f.Body)),
 	}
 
 	return resp, nil
