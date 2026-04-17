@@ -2,8 +2,9 @@ package provider
 
 import (
 	"fmt"
-	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"net/http"
+
+	"github.com/nanezx/ve-xchange-api/internal/rates"
 )
 
 type DolarVzlaProvider struct {
@@ -49,6 +50,11 @@ func (p *DolarVzlaProvider) GetPrices() (rates.PriceResponse, error) {
 
 	if err != nil {
 		return nil, fmt.Errorf("DolarVzla prices - Error  %w", err)
+	}
+
+	if data.Current.EUR <= 0 || data.Current.USD <= 0 {
+		return nil, fmt.Errorf("DolarVzla prices - invalid rates: USD=%.2f, EUR=%.2f (must be > 0)",
+			data.Current.USD, data.Current.EUR)
 	}
 
 	return rates.PriceResponse{
