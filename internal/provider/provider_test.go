@@ -150,3 +150,31 @@ func TestGetPriceWrongType(t *testing.T) {
 		t.Fatalf("Expected error, got nil")
 	}
 }
+
+func TestGetPriceUSDZero(t *testing.T) {
+	jsonBody := `{"current": {"usd": 0, "eur": 2.1}}`
+
+	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
+
+	provider := NewDolarVzlaProvider(fakeClient, "")
+
+	_, err := provider.GetPrices()
+
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+}
+
+func TestGetPriceEURZero(t *testing.T) {
+	jsonBody := `{"current": {"usd": 2.1, "eur": 0}}`
+
+	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
+
+	provider := NewDolarVzlaProvider(fakeClient, "")
+
+	_, err := provider.GetPrices()
+
+	if err == nil {
+		t.Fatalf("Expected error, got nil")
+	}
+}
