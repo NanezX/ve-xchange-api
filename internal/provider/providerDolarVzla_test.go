@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestGetPriceSuccess(t *testing.T) {
+func TestGetPriceDolazVzlaSuccess(t *testing.T) {
 	usdPrice := 50.5
 	eurPrice := 56.1
 
@@ -40,7 +40,7 @@ func TestGetPriceSuccess(t *testing.T) {
 
 }
 
-func TestGetPriceServerInternalError(t *testing.T) {
+func TestGetPriceDolazVzlaServerInternalError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 500}
 
 	provider := NewDolarVzlaProvider(fakeClient, "")
@@ -52,7 +52,7 @@ func TestGetPriceServerInternalError(t *testing.T) {
 	}
 }
 
-func TestGetPriceServerResponseError(t *testing.T) {
+func TestGetPriceDolazVzlaServerResponseError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 404}
 
 	provider := NewDolarVzlaProvider(fakeClient, "")
@@ -64,7 +64,7 @@ func TestGetPriceServerResponseError(t *testing.T) {
 	}
 }
 
-func TestGetPriceNetworkError(t *testing.T) {
+func TestGetPriceDolazVzlaNetworkError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{Error: errors.New("connection timeout")}
 
 	provider := NewDolarVzlaProvider(fakeClient, "")
@@ -76,7 +76,7 @@ func TestGetPriceNetworkError(t *testing.T) {
 	}
 }
 
-func TestGetPriceInvalidJSON(t *testing.T) {
+func TestGetPriceDolazVzlaInvalidJSON(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 200, Body: "not json"}
 
 	provider := NewDolarVzlaProvider(fakeClient, "")
@@ -88,7 +88,7 @@ func TestGetPriceInvalidJSON(t *testing.T) {
 	}
 }
 
-func TestGetPriceEmptyResponse(t *testing.T) {
+func TestGetPriceDolazVzlaEmptyResponse(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 200}
 
 	provider := NewDolarVzlaProvider(fakeClient, "")
@@ -100,7 +100,7 @@ func TestGetPriceEmptyResponse(t *testing.T) {
 	}
 }
 
-func TestGetPriceMissingEUR(t *testing.T) {
+func TestGetPriceDolazVzlaMissingEUR(t *testing.T) {
 	// Body with missing EUR
 	jsonBody := `{"current": {"usd": 50.5}}`
 
@@ -115,7 +115,7 @@ func TestGetPriceMissingEUR(t *testing.T) {
 	}
 }
 
-func TestGetPriceWrongType(t *testing.T) {
+func TestGetPriceDolazVzlaWrongType(t *testing.T) {
 	jsonBody := `{"current": {"usd": 50.5, "eur": "eur price"}}`
 
 	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
@@ -129,7 +129,7 @@ func TestGetPriceWrongType(t *testing.T) {
 	}
 }
 
-func TestGetPriceUSDZero(t *testing.T) {
+func TestGetPriceDolazVzlaUSDZero(t *testing.T) {
 	jsonBody := `{"current": {"usd": 0, "eur": 2.1}}`
 
 	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
@@ -143,7 +143,7 @@ func TestGetPriceUSDZero(t *testing.T) {
 	}
 }
 
-func TestGetPriceEURZero(t *testing.T) {
+func TestGetPriceDolazVzlaEURZero(t *testing.T) {
 	jsonBody := `{"current": {"usd": 2.1, "eur": 0}}`
 
 	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
