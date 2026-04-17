@@ -31,7 +31,7 @@ const (
 	TypeSell TradeType = "SELL"
 )
 
-func (t *TradeType) IsValid() bool {
+func (t *TradeType) isValid() bool {
 	if *t == TypeBuy || *t == TypeSell {
 		return true
 	}
@@ -69,7 +69,7 @@ type JsonResponseP2P struct {
 
 // Generate only USDT-VES
 func (p *BinanceProvider) generateBodyP2P(tradeType TradeType, page uint) (BodyRequestP2P, error) {
-	if !tradeType.IsValid() {
+	if !tradeType.isValid() {
 		return BodyRequestP2P{}, errors.New("Invalid trade type")
 	}
 
