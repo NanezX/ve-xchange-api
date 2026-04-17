@@ -10,9 +10,8 @@ import (
 
 type FakeHTTPDoer struct {
 	StatusCode int
-	Body string
-	Error error
-
+	Body       string
+	Error      error
 }
 
 func NewFakeClient(body string) *FakeHTTPDoer {
@@ -20,8 +19,12 @@ func NewFakeClient(body string) *FakeHTTPDoer {
 }
 
 func (f *FakeHTTPDoer) Do(*http.Request) (*http.Response, error) {
+	if f.Error != nil {
+		return nil, f.Error
+	}
+
 	resp := &http.Response{
-		StatusCode: 200,
+		StatusCode: f.StatusCode,
 		Body:       io.NopCloser(strings.NewReader(f.Body)),
 	}
 
@@ -50,7 +53,6 @@ func TestGetPriceSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Expected succes, got %v", err)
 	}
-
 
 	if prices["USD_BCV"] != usdPrice {
 		t.Fatalf("Expected USD Price '%v', got '%v'", usdPrice, prices["USD_BCV"])
