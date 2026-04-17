@@ -3,30 +3,8 @@ package provider
 import (
 	"encoding/json"
 	"errors"
-	"io"
-	"net/http"
-	"strings"
 	"testing"
 )
-
-type FakeHTTPDoer struct {
-	StatusCode int
-	Body       string
-	Error      error
-}
-
-func (f *FakeHTTPDoer) Do(*http.Request) (*http.Response, error) {
-	if f.Error != nil {
-		return nil, f.Error
-	}
-
-	resp := &http.Response{
-		StatusCode: f.StatusCode,
-		Body:       io.NopCloser(strings.NewReader(f.Body)),
-	}
-
-	return resp, nil
-}
 
 func TestGetPriceSuccess(t *testing.T) {
 	usdPrice := 50.5
