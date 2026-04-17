@@ -14,10 +14,6 @@ type FakeHTTPDoer struct {
 	Error      error
 }
 
-func NewFakeClient(body string) *FakeHTTPDoer {
-	return &FakeHTTPDoer{Body: body}
-}
-
 func (f *FakeHTTPDoer) Do(*http.Request) (*http.Response, error) {
 	if f.Error != nil {
 		return nil, f.Error
@@ -33,8 +29,9 @@ func (f *FakeHTTPDoer) Do(*http.Request) (*http.Response, error) {
 
 func TestGetPriceSuccess(t *testing.T) {
 	usdPrice := 50.5
-	eurPrice := 2.1
+	eurPrice := 56.1
 
+	// Data
 	fakeData := JsonResponseDolarVzla{
 		Current: DataDolarVzlaBCV{
 			USD:  usdPrice,
@@ -44,7 +41,7 @@ func TestGetPriceSuccess(t *testing.T) {
 	}
 	jsonBytes, _ := json.Marshal(fakeData)
 
-	fakeClient := NewFakeClient(string(jsonBytes))
+	fakeClient := &FakeHTTPDoer{Body: string(jsonBytes)}
 
 	provider := NewDolarVzlaProvider(fakeClient, "")
 
