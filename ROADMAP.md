@@ -20,7 +20,7 @@
 
 ## Pillar 1: Testing & Code Quality
 
-### 1.1 — Unit Testing with HTTP Client Mocking
+### 1.1 — Unit Testing with HTTP Client Mocking [DONE]
 
 | | Details |
 |---|---|
