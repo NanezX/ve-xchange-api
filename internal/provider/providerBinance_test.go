@@ -96,119 +96,132 @@ func TestGetPriceBinanceSuccess(t *testing.T) {
 
 }
 
-// func TestGetPriceBinanceServerInternalError(t *testing.T) {
-// 	fakeClient := &FakeHTTPDoer{StatusCode: 500}
+func TestGetPriceBinanceServerInternalError(t *testing.T) {
+	fakeClient := &FakeHTTPDoer{StatusCode: 500}
 
-// 	provider := NewDolarVzlaProvider(fakeClient, "")
+	provider := NewBinanceProvider(fakeClient)
 
-// 	_, err := provider.GetPrices()
+	_, err := provider.GetPrices()
 
-// 	if err == nil {
-// 		t.Fatalf("Expected error, got %v", err)
-// 	}
-// }
+	if err == nil {
+		t.Fatalf("Expected error, got %v", err)
+	}
+}
 
-// func TestGetPriceBinanceServerResponseError(t *testing.T) {
-// 	fakeClient := &FakeHTTPDoer{StatusCode: 404}
+func TestGetPriceBinanceServerResponseError(t *testing.T) {
+	fakeClient := &FakeHTTPDoer{StatusCode: 404}
 
-// 	provider := NewDolarVzlaProvider(fakeClient, "")
+	provider := NewBinanceProvider(fakeClient)
 
-// 	_, err := provider.GetPrices()
+	_, err := provider.GetPrices()
 
-// 	if err == nil {
-// 		t.Fatalf("Expected error, got %v", err)
-// 	}
-// }
+	if err == nil {
+		t.Fatalf("Expected error, got %v", err)
+	}
+}
 
-// func TestGetPriceBinanceNetworkError(t *testing.T) {
-// 	fakeClient := &FakeHTTPDoer{Error: errors.New("connection timeout")}
+func TestGetPriceBinanceNetworkError(t *testing.T) {
+	fakeClient := &FakeHTTPDoer{Error: errors.New("connection timeout")}
 
-// 	provider := NewDolarVzlaProvider(fakeClient, "")
+	provider := NewBinanceProvider(fakeClient)
 
-// 	_, err := provider.GetPrices()
+	_, err := provider.GetPrices()
 
-// 	if err == nil {
-// 		t.Fatalf("Expected error, got %v", err)
-// 	}
-// }
+	if err == nil {
+		t.Fatalf("Expected error, got %v", err)
+	}
+}
 
-// func TestGetPriceBinanceInvalidJSON(t *testing.T) {
-// 	fakeClient := &FakeHTTPDoer{StatusCode: 200, Body: "not json"}
+func TestGetPriceBinanceInvalidJSON(t *testing.T) {
+	fakeClient := &FakeHTTPDoer{StatusCode: 200, Body: "not json"}
 
-// 	provider := NewDolarVzlaProvider(fakeClient, "")
+	provider := NewBinanceProvider(fakeClient)
 
-// 	_, err := provider.GetPrices()
+	_, err := provider.GetPrices()
 
-// 	if err == nil {
-// 		t.Fatalf("Expected error, got %v", err)
-// 	}
-// }
+	if err == nil {
+		t.Fatalf("Expected error, got %v", err)
+	}
+}
 
-// func TestGetPriceBinanceEmptyResponse(t *testing.T) {
-// 	fakeClient := &FakeHTTPDoer{StatusCode: 200}
+func TestGetPriceBinanceEmptyResponse(t *testing.T) {
+	fakeClient := &FakeHTTPDoer{StatusCode: 200}
 
-// 	provider := NewDolarVzlaProvider(fakeClient, "")
+	provider := NewBinanceProvider(fakeClient)
 
-// 	_, err := provider.GetPrices()
+	_, err := provider.GetPrices()
 
-// 	if err == nil {
-// 		t.Fatalf("Expected error, got %v", err)
-// 	}
-// }
+	if err == nil {
+		t.Fatalf("Expected error, got %v", err)
+	}
+}
 
-// func TestGetPriceBinanceMissingEUR(t *testing.T) {
-// 	// Body with missing EUR
-// 	jsonBody := `{"current": {"usd": 50.5}}`
+func TestGetPriceBinanceNoPricesFound(t *testing.T) {
+	emptyData := []DataP2P{}
+	sellData := JsonResponseP2P{Success: true, Data: emptyData}
+	buyData := JsonResponseP2P{Success: true, Data: emptyData}
 
-// 	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
+	fakeClient := &FakeHTTPDoer{
+		StatusCode: 200,
+		DoFunc: func(req *http.Request) (string, error) {
 
-// 	provider := NewDolarVzlaProvider(fakeClient, "")
+			var body BodyRequestP2P
+			json.NewDecoder(req.Body).Decode(&body)
 
-// 	_, err := provider.GetPrices()
+			switch body.TradeType {
+			case "SELL":
+				bytes, _ := json.Marshal(sellData)
 
-// 	if err == nil {
-// 		t.Fatalf("Expected error, got nil")
-// 	}
-// }
+				return string(bytes), nil
+			case "BUY":
+				bytes, _ := json.Marshal(buyData)
+				return string(bytes), nil
+			}
 
-// func TestGetPriceBinanceWrongType(t *testing.T) {
-// 	jsonBody := `{"current": {"usd": 50.5, "eur": "eur price"}}`
+			return "", errors.New("unknown trade type")
+		},
+	}
 
-// 	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
+	provider := NewBinanceProvider(fakeClient)
 
-// 	provider := NewDolarVzlaProvider(fakeClient, "")
+	_, err := provider.GetPrices()
 
-// 	_, err := provider.GetPrices()
+	if err == nil {
+		t.Fatalf("Expected error no prices found, got nil")
+	}
+}
 
-// 	if err == nil {
-// 		t.Fatalf("Expected error, got nil")
-// 	}
-// }
+func TestGetPriceBinanceNoSuccess(t *testing.T) {
+	sellData := JsonResponseP2P{Success: false, Data: genMockData(TypeSell)}
+	buyData := JsonResponseP2P{Success: true, Data: genMockData(TypeBuy)}
 
-// func TestGetPriceBinanceUSDZero(t *testing.T) {
-// 	jsonBody := `{"current": {"usd": 0, "eur": 2.1}}`
+	fakeClient := &FakeHTTPDoer{
+		StatusCode: 200,
+		DoFunc: func(req *http.Request) (string, error) {
 
-// 	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
+			var body BodyRequestP2P
+			json.NewDecoder(req.Body).Decode(&body)
 
-// 	provider := NewDolarVzlaProvider(fakeClient, "")
+			switch body.TradeType {
+			case "SELL":
+				bytes, _ := json.Marshal(sellData)
 
-// 	_, err := provider.GetPrices()
+				return string(bytes), nil
+			case "BUY":
+				bytes, _ := json.Marshal(buyData)
+				return string(bytes), nil
+			}
 
-// 	if err == nil {
-// 		t.Fatalf("Expected error, got nil")
-// 	}
-// }
+			return "", errors.New("unknown trade type")
+		},
+	}
 
-// func TestGetPriceBinanceEURZero(t *testing.T) {
-// 	jsonBody := `{"current": {"usd": 2.1, "eur": 0}}`
+	provider := NewBinanceProvider(fakeClient)
 
-// 	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
+	_, err := provider.GetPrices()
 
-// 	provider := NewDolarVzlaProvider(fakeClient, "")
+	if err == nil {
+		t.Fatalf("Expected failure, got %v", err)
+	}
 
-// 	_, err := provider.GetPrices()
-
-// 	if err == nil {
-// 		t.Fatalf("Expected error, got nil")
-// 	}
-// }
+}
