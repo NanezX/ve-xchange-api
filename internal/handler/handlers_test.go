@@ -102,30 +102,7 @@ func TestRatesHandlerPOST(t *testing.T) {
 
 	handler.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fatalf("Expected 200, got %d", w.Code)
-	}
-
-	if w.Header().Get("Content-Type") != "application/json" {
-		t.Fatalf("Expected JSON content-type")
-	}
-
-	var response state.ExchangeRates
-	json.NewDecoder(w.Body).Decode(&response)
-
-	if response.UsdBCV != appState.GetRates().UsdBCV {
-		t.Fatalf("Expected %v, got %v", appState.GetRates().UsdBCV, response.UsdBCV)
-	}
-
-	if response.EurBCV != appState.GetRates().EurBCV {
-		t.Fatalf("Expected %v, got %v", appState.GetRates().EurBCV, response.EurBCV)
-	}
-
-	if response.UsdtBinance != appState.GetRates().UsdtBinance {
-		t.Fatalf("Expected %v, got %v", appState.GetRates().UsdtBinance, response.UsdtBinance)
-	}
-
-	if response.LastUpdate.IsZero() {
-		t.Fatalf("Expected LastUpdate to be populated")
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("Expected 405, got %d", w.Code)
 	}
 }

@@ -23,7 +23,11 @@ func NewRatesHandler(appState *state.State) RatesHandler {
 }
 
 func (handler RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(handler.appState.GetRates())
 }
