@@ -10,15 +10,21 @@ import (
 )
 
 type MockProvider struct {
-	mu         sync.Mutex
+	mu         sync.RWMutex
 	prices     rates.PriceResponse
 	priceError error
-	isCalled   bool
+	called     bool
+}
+
+func (p *MockProvider) isCalled() bool {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	return p.called
 }
 
 func (p *MockProvider) GetPrices() (rates.PriceResponse, error) {
 	p.mu.Lock()
-	p.isCalled = true
+	p.called = true
 	p.mu.Unlock()
 	if p.priceError != nil {
 		return nil, p.priceError
@@ -66,7 +72,7 @@ func TestWorkerApplyData(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	if !mockProvider.isCalled {
+	if !mockProvider.isCalled() {
 		t.Fatalf("Expected Provider to be called")
 	}
 
@@ -94,7 +100,7 @@ func TestWorkerProviderError(t *testing.T) {
 
 	time.Sleep(10 * time.Millisecond)
 
-	if !mockProvider.isCalled {
+	if !mockProvider.isCalled() {
 		t.Fatalf("Expected Provider GetPrices to be called")
 	}
 
@@ -122,7 +128,7 @@ func TestWorkerProviderEmptyPrices(t *testing.T) {
 
 	time.Sleep(50 * time.Millisecond)
 
-	if !mockProvider.isCalled {
+	if !mockProvider.isCalled() {
 		t.Fatalf("Expected Provider to be called")
 	}
 
