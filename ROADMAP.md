@@ -28,7 +28,7 @@
 | **Current state** | No tests exist in the project. Both providers (`binanceProvider.go`, `dolarVzlaProvider.go`) create an `http.Client{Timeout: 10 * time.Second}` internally within each method (`fetchPrices`, `GetPrices`), making it **impossible** to substitute the client with a mock in tests. |
 | **Rationale** | Testing providers without calling the real APIs is critical because: **(a)** external APIs are slow and introduce flakiness into tests, **(b)** they have rate-limits and in the case of DolarVzla require a paid API key, **(c)** their responses change constantly, making it impossible to verify expected values. Without mocks, tests would be fragile, slow, and non-deterministic. The solution is to define an `HTTPDoer` interface (with method `Do(*http.Request) (*http.Response, error)`) and inject it into providers via constructor. In production, the real `http.Client` is passed; in tests, a mock returning predefined responses is used. |
 
-### 1.2 — Leverage the Existing `PriceProvider` Interface to Test the Worker
+### 1.2 — Leverage the Existing `PriceProvider` Interface to Test the Worker [DONE]
 
 | | Details |
 |---|---|
