@@ -3,6 +3,7 @@ package worker
 import (
 	"errors"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -58,13 +59,13 @@ func TestWorkerApplyData(t *testing.T) {
 		prices: rates.PriceResponse{"USD": 543.21},
 	}
 
-	applyCalled := false
+	var applyCalled atomic.Bool 
 
 	job := ProviderJob{
 		Provider: mockProvider,
 		Every:    1 * time.Millisecond,
 		Apply: func(rates.PriceResponse) {
-			applyCalled = true
+			applyCalled.Store(true)
 		},
 	}
 
@@ -76,7 +77,7 @@ func TestWorkerApplyData(t *testing.T) {
 		t.Fatalf("Expected Provider to be called")
 	}
 
-	if !applyCalled {
+	if !applyCalled.Load() {
 		t.Fatalf("Expected Apply function to be called")
 	}
 }
@@ -86,13 +87,13 @@ func TestWorkerProviderError(t *testing.T) {
 		priceError: errors.New("error to get prices"),
 	}
 
-	applyCalled := false
+	var applyCalled atomic.Bool 
 
 	job := ProviderJob{
 		Provider: mockProvider,
 		Every:    1 * time.Millisecond,
 		Apply: func(rates.PriceResponse) {
-			applyCalled = true
+			applyCalled.Store(true)
 		},
 	}
 
@@ -104,7 +105,7 @@ func TestWorkerProviderError(t *testing.T) {
 		t.Fatalf("Expected Provider GetPrices to be called")
 	}
 
-	if applyCalled {
+	if applyCalled.Load() {
 		t.Fatalf("Apply functon should not be called on get price error")
 	}
 }
@@ -114,13 +115,13 @@ func TestWorkerProviderEmptyPrices(t *testing.T) {
 		prices: rates.PriceResponse{},
 	}
 
-	applyCalled := false
+	var applyCalled atomic.Bool 
 
 	job := ProviderJob{
 		Provider: mockProvider,
 		Every:    1 * time.Millisecond,
 		Apply: func(rates.PriceResponse) {
-			applyCalled = true
+			applyCalled.Store(true)
 		},
 	}
 
@@ -132,7 +133,7 @@ func TestWorkerProviderEmptyPrices(t *testing.T) {
 		t.Fatalf("Expected Provider to be called")
 	}
 
-	if !applyCalled {
+	if !applyCalled.Load() {
 		t.Fatalf("Expected Apply function to be called")
 	}
 }
