@@ -18,7 +18,7 @@
 
 ---
 
-## Pillar 1: Testing & Code Quality
+## Pillar 1: Testing & Code Quality [DONE]
 
 ### 1.1 — Unit Testing with HTTP Client Mocking [DONE]
 
@@ -36,7 +36,7 @@
 | **Current state** | The `PriceProvider` interface already exists in `types.go` with methods `GetPrices()` and `GetName()`, but the worker uses concrete types directly (`*BinanceProvider`, `*DolarVzlaProvider`). Functions `updateBcv(p *DolarVzlaProvider)` and `updateBinance(p *BinanceProvider)` accept concrete pointers. |
 | **Rationale** | If the update functions accepted `PriceProvider`, they could be tested with mock structs that implement the interface, without depending on real APIs. This allows verifying that the worker updates `AppState` correctly (prices, timestamps) and handles errors without crashing — all without network access. The interface already exists; it just needs to be used. |
 
-### 1.3 — Test the `/rates` Handler
+### 1.3 — Test the `/rates` Handler [DONE]
 
 | | Details |
 |---|---|
