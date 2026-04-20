@@ -46,9 +46,9 @@
 
 ---
 
-## Pillar 2: CI/CD with GitHub Actions
+## Pillar 2: CI/CD with GitHub Actions [DONE]
 
-### 2.1 — CI Workflow: `go test` + `golangci-lint` on Every Push/PR
+### 2.1 — CI Workflow: `go test` + `golangci-lint` on Every Push/PR [DONE]
 
 | | Details |
 |---|---|
@@ -56,7 +56,7 @@
 | **Current state** | No CI/CD pipeline exists. Code enters `main` without any automated validation. |
 | **Rationale** | Automating `go test ./...` and `golangci-lint run` on every Push and PR ensures that: **(a)** no change breaks existing tests (regression), **(b)** style errors, potential bugs, and code smells are detected before merge, **(c)** a minimum quality standard is established that scales with the team. Without CI, the only quality gate is individual discipline — which inevitably fails. |
 
-### 2.2 — `.github/workflows/ci.yml` File
+### 2.2 — `.github/workflows/ci.yml` File [DONE]
 
 | | Details |
 |---|---|
@@ -64,7 +64,7 @@
 | **Current state** | The `.github/workflows/` directory does not exist. |
 | **Rationale** | The workflow should include: **(1)** `actions/setup-go` with the Go version from `go.mod`, **(2)** `go vet ./...` for basic static analysis, **(3)** `golangci/golangci-lint-action` for advanced linting, **(4)** `go test -race -coverprofile=coverage.out ./...` for tests with data race detection. The `-race` flag is especially important because the project uses goroutines and mutex — it will detect data races that normal tests miss. Optionally, upload the coverage report as an artifact. |
 
-### 2.3 — Branch Protection on `main`
+### 2.3 — Branch Protection on `main` [DONE]
 
 | | Details |
 |---|---|
