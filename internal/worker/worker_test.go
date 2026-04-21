@@ -59,7 +59,7 @@ func TestWorkerApplyData(t *testing.T) {
 		prices: rates.PriceResponse{"USD": 543.21},
 	}
 
-	var applyCalled atomic.Bool 
+	var applyCalled atomic.Bool
 
 	job := ProviderJob{
 		Provider: mockProvider,
@@ -87,7 +87,7 @@ func TestWorkerProviderError(t *testing.T) {
 		priceError: errors.New("error to get prices"),
 	}
 
-	var applyCalled atomic.Bool 
+	var applyCalled atomic.Bool
 
 	job := ProviderJob{
 		Provider: mockProvider,
@@ -115,7 +115,7 @@ func TestWorkerProviderEmptyPrices(t *testing.T) {
 		prices: rates.PriceResponse{},
 	}
 
-	var applyCalled atomic.Bool 
+	var applyCalled atomic.Bool
 
 	job := ProviderJob{
 		Provider: mockProvider,
