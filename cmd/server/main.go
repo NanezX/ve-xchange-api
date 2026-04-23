@@ -30,7 +30,7 @@ func main() {
 	providerJobs := []worker.ProviderJob{
 		// DolarVzla API
 		{
-			Provider: provider.NewDolarVzlaProvider(client, appConfig.DolarVzlaApiKey),
+			Provider: provider.NewDolarDolarApiProvider(client),
 			Every:    6 * time.Hour,
 			Apply:    func(pr rates.PriceResponse) { state.UpdateBcvPrice(appState, pr) },
 		},
