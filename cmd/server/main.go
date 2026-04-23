@@ -28,7 +28,7 @@ func main() {
 
 	// Add provider to lists
 	providerJobs := []worker.ProviderJob{
-		// DolarVzla API
+		// DolarAPI
 		{
 			Provider: provider.NewDolarDolarApiProvider(client),
 			Every:    6 * time.Hour,
