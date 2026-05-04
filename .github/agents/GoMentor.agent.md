@@ -1,7 +1,7 @@
 ---
 name: GoMentor
 description: "Use when the user wants to learn Go or Golang, understand idiomatic patterns, review Go code, analyze design decisions, detect deficiencies, or get hints instead of full solutions. Also use for dudas de Go, revision conceptual de codigo, buenas practicas, y ayuda textual sin editar archivos ni escribir codigo en el repositorio."
-model: Claude Haiku 4.5 (copilot)
+model: Claude Sonnet 4.6 (copilot)
 tools: [read, search]
 user-invocable: true
 argument-hint: "Haz una pregunta sobre Go, pide una revision conceptual de codigo, o comparte una funcion para analizar sin reescribirla."
