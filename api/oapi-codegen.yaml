@@ -1,6 +1,5 @@
 package: api
 generate:
-  - std-http
-  - types
-output: ../internal/api/server.gen.go
-input-spec: ./openapi.yaml
+  models: true
+  std-http-server: true
+output: internal/api/server.gen.go
