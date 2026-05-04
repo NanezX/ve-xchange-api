@@ -14,7 +14,9 @@
 3. [Architecture & Refactoring](#pillar-3-architecture--refactoring)
 4. [Persistence & Resilience](#pillar-4-persistence--resilience)
 5. [Advanced Error Handling](#pillar-5-advanced-error-handling)
-6. [Suggested Implementation Order](#suggested-implementation-order)
+6. [Extend Test Coverage](#pillar-6-extend-test-coverage)
+7. [OpenAPI & API Documentation](#pillar-7-openapi--api-documentation)
+8. [Suggested Implementation Order](#suggested-implementation-order)
 
 ---
 
@@ -169,31 +171,37 @@
 ## Suggested Implementation Order
 
 ```
-Phase 1 — Foundation (Architecture)
+Phase 1 — Foundation (Architecture)           [DONE]
   3.1  Single, injected HttpClient
   3.2  Generic FetchJSON[T] function
   3.4  Remove global variables (dependency injection)
   3.3  Migration to standard folder structure
 
-Phase 2 — Testing
+Phase 2 — Testing                             [DONE]
   1.1  Unit Testing with HTTP mocking
   1.2  Worker tests with PriceProvider mock
   1.3  /rates handler tests
 
-Phase 3 — CI/CD
+Phase 3 — CI/CD                               [DONE]
   2.1  GitHub Actions workflow (go test + lint)
   2.2  .github/workflows/ci.yml file
   2.3  Branch protection on main
 
-Phase 4 — Resilience & Observability
+Phase 4 — API Contract & Documentation
+  7.1  Spec-first design with oapi-codegen (redefines response schemas)
+  7.2  Swagger UI with swaggest/swgui (always available)
+  7.3  New endpoints: /health, /rates/{currency}
+
+Phase 5 — Resilience & Observability
   4.2  Graceful Shutdown
   4.3  Retry with exponential backoff
-  5.1  Stale data detection
+  5.1  Stale data detection (integrates with /health from 7.3)
   5.2  Structured logging with log/slog
   5.3  Consecutive failure counter
 
-Phase 5 — Persistence
+Phase 6 — Persistence
   4.1  State as cache + DB for historical data
+  7.4  /rates/{currency}/history endpoint (depends on 4.1)
 ```
 
 > **Why this order?**
@@ -201,7 +209,8 @@ Phase 5 — Persistence
 > - **Phase 1 first** because the architecture refactors (dependency injection, removing globals) are a **prerequisite** for writing quality unit tests.
 > - **Phase 2 before Phase 3** because you need tests for CI to have something to run.
 > - **Phase 3 before Phase 4** because CI will catch regressions when you implement resilience changes.
-> - **Phase 5 last** because it requires the most additional infrastructure and benefits the most from having everything else in place (tests, CI, graceful shutdown, logging).
+> - **Phase 4 (API Contract) before Phase 5** because the OpenAPI spec redefines the response schemas (per-currency metadata: `value`, `last_updated`, `is_stale`) that Pillar 5 depends on. The `/health` endpoint from 7.3 is also the integration point for stale data detection (5.1).
+> - **Phase 6 last** because it requires the most additional infrastructure (PostgreSQL) and the `/history` endpoint (7.4) has a hard dependency on the DB being in place.
 
 ---
 
@@ -230,6 +239,42 @@ Phase 5 — Persistence
 | **Improvement** | Add tests for negative prices, `NaN`, `Infinity`, and extreme outliers in provider responses. |
 | **Current state** | Provider tests cover zero values (`<= 0`) but not floating-point edge cases like `math.NaN()`, `math.Inf(1)`, or suspiciously large values (e.g., `999999999.0`). |
 | **Rationale** | JSON allows valid floats that are semantically broken for financial data. `json.Unmarshal` will happily decode a response with `"usd": 1e308` into a `float64`. These edge cases should be caught at the provider boundary before reaching `AppState` or the DB. |
+
+---
+
+## Pillar 7: OpenAPI & API Documentation
+
+### 7.1 — Spec-First Design with `oapi-codegen`
+
+| | Details |
+|---|---|
+| **Improvement** | Write `api/openapi.yaml` as the single source of truth and use `oapi-codegen` to generate Go types and a `ServerInterface` that handlers must implement. |
+| **Current state** | The API has no formal contract. `ExchangeRates` is a flat struct with a single `LastUpdate` for all currencies. There is no machine-readable spec, no path-param routes, and no `/health` endpoint. |
+| **Rationale** | Spec-first development means the contract is defined before implementation, not inferred from it. `oapi-codegen` with the `std-http` generator produces: **(a)** typed Go structs from `#/components/schemas` (replacing the hand-written `ExchangeRates`), **(b)** a `ServerInterface` with one method per endpoint — the compiler enforces that every endpoint is implemented, **(c)** a `HandlerFromMux(si ServerInterface, mux *http.ServeMux)` function that wires routes automatically. The new response schema will be per-currency objects (`{ value, last_updated, data_age_seconds, is_stale }`) instead of a flat struct, which is a prerequisite for Pillar 5.1 (stale data detection). No external router is introduced — `net/http` ServeMux (Go 1.22+) supports path parameters natively. |
+
+### 7.2 — Interactive API Documentation with `swaggest/swgui`
+
+| | Details |
+|---|---|
+| **Improvement** | Embed Swagger UI in the binary using `//go:embed` and serve it at `GET /docs`, always available in all environments. The raw spec is served at `GET /openapi.yaml`. |
+| **Current state** | No API documentation exists. API consumers have no way to discover endpoints, required parameters, or response shapes without reading the source code. |
+| **Rationale** | `swaggest/swgui` embeds Swagger UI assets directly into the Go binary — no CDN, no external dependencies, works offline and in production. Serving docs unconditionally (not behind a dev-only flag) is appropriate for a public-facing exchange rate API: **(a)** external consumers benefit from live interactive documentation, **(b)** embedding eliminates the operational complexity of serving static files separately, **(c)** both `/docs` and `/openapi.yaml` are registered as standard `http.Handler` — zero framework coupling. Both `oapi-codegen` and `swgui` consume the same `api/openapi.yaml`, so docs are always in sync with the generated types. |
+
+### 7.3 — New Endpoints: `GET /health` and `GET /rates/{currency}`
+
+| | Details |
+|---|---|
+| **Improvement** | Add `GET /health` as a structured health check and `GET /rates/{currency}` for single-currency queries. Replace the existing `/hello` stub with `/health`. |
+| **Current state** | `/hello` returns a plain string with no semantic value. There is no way to query a single currency rate. All rates are returned in a single flat response. |
+| **Rationale** | **(a)** `GET /health` returns `200 OK` with `{ status: "ok" }` under normal conditions and `503 Service Unavailable` with stale currency details when any rate exceeds its staleness threshold (direct integration point for Pillar 5.1). This is the standard contract for load balancers, Kubernetes liveness/readiness probes, and uptime monitors. **(b)** `GET /rates/{currency}` accepts an enum path parameter (`usd_bcv`, `eur_bcv`, `usdt_binance`) and returns a single `RateEntry` object. This reduces payload size for consumers who only need one rate and enables per-currency caching at the HTTP layer in the future. `{currency}` as an enum is enforced both in the OpenAPI spec and validated in the generated handler stub. |
+
+### 7.4 — Historical Data Endpoint: `GET /rates/{currency}/history`
+
+| | Details |
+|---|---|
+| **Improvement** | Add `GET /rates/{currency}/history?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD` to expose the `prices_history` table over HTTP. |
+| **Current state** | No historical data endpoint exists. This endpoint has a hard dependency on Pillar 4.1 (PostgreSQL persistence). |
+| **Rationale** | **(a)** `fromDate` and `toDate` are required query parameters of type `date` (ISO 8601, `YYYY-MM-DD`). Making them required avoids unbounded queries that would return the entire history table. **(b)** The response is an array of `{ date, value, is_average }` objects — `is_average: true` indicates the value is a daily USDT average computed by the consolidation worker, while `false` indicates an official BCV rate. **(c)** This endpoint is defined in the spec from day one (7.1) even though the backing DB layer arrives in Phase 6, allowing API consumers to plan integrations in advance. The handler returns `501 Not Implemented` until 4.1 is complete. |
 
 ---
 
