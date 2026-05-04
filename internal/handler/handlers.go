@@ -8,9 +8,9 @@ import (
 	"github.com/nanezx/ve-xchange-api/internal/state"
 )
 
-type HelloWorldHandler struct{}
+type InfoHandler struct{}
 
-func (HelloWorldHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (InfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "Hello world!")
 }
 

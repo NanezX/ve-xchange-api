@@ -47,7 +47,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/hello", handler.HelloWorldHandler{})
+	mux.Handle("/info", handler.InfoHandler{})
 	mux.Handle("/rates", handler.NewRatesHandler(appState))
 
 	fmt.Printf("Servidor corriendo en http://localhost:%d\n", appConfig.AppPort)
