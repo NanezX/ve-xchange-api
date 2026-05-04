@@ -1,4 +1,4 @@
-pacakage: api
+package: api
 generate:
   - std-http
   - types
