@@ -1,0 +1,45 @@
+openapi: "3.0.3"
+info:
+  title: ve-exchange-api
+  version: "1.0.0"
+
+paths:
+  /rates:
+    get:
+      operationId: GetRates
+      responses:
+        '200':
+          description: "Current rates for all the currencies (USD, EUR & USDT)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllRates'
+
+components:
+  schemas:
+    RateEntry:
+      type: object
+      required: [value, last_updated, data_age_seconds, is_stale]
+      properties:
+        value:
+          type: number
+          format: double
+          example: 570.11
+        last_updated:
+          type: string
+          format: date-time
+          nullable: true
+        data_age_seconds:
+          type: integer
+        is_stale:
+          type: boolean
+    AllRates:
+      type: object
+      required: [usd_bcv, eur_bcv, usdt_binance]
+      properties:
+        usd_bcv:
+          $ref: '#/components/schemas/RateEntry'
+        eur_bcv:
+          $ref: '#/components/schemas/RateEntry'
+        usdt_binance:
+          $ref: '#/components/schemas/RateEntry'
