@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/nanezx/ve-xchange-api/internal/api"
 	"github.com/nanezx/ve-xchange-api/internal/config"
 	"github.com/nanezx/ve-xchange-api/internal/handler"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
@@ -48,7 +49,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.Handle("/info", handler.InfoHandler{})
-	mux.Handle("/rates", handler.NewRatesHandler(appState))
+	api.HandlerFromMux(handler.NewRatesHandler(appState), mux)
 
 	fmt.Printf("Servidor corriendo en http://localhost:%d\n", appConfig.AppPort)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", appConfig.AppPort), mux)

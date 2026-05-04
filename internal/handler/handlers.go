@@ -22,7 +22,7 @@ func NewRatesHandler(appState *state.State) RatesHandler {
 	return RatesHandler{appState: appState}
 }
 
-func (handler RatesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (handler RatesHandler) GetRates(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
