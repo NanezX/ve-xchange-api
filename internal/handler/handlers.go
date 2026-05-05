@@ -2,32 +2,26 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
+	"github.com/nanezx/ve-xchange-api/internal/api"
 	"github.com/nanezx/ve-xchange-api/internal/state"
 )
 
-type InfoHandler struct{}
-
-func (InfoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "Hello world!")
-}
-
-type RatesHandler struct {
+type Server struct {
 	appState *state.State
 }
 
-func NewRatesHandler(appState *state.State) RatesHandler {
-	return RatesHandler{appState: appState}
+func NewServer(appState *state.State) Server {
+	return Server{appState: appState}
 }
 
-func (handler RatesHandler) GetRates(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
+func (handler Server) GetRates(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(handler.appState.GetRates())
+}
+
+func (Server) GetHealth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(api.Health{Status: "ok"})
 }
