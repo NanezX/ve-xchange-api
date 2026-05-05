@@ -1,28 +1,39 @@
 package state
 
 import (
-	"github.com/nanezx/ve-xchange-api/internal/api"
 	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"sync"
 	"time"
 )
 
+type RateData struct {
+    Value       float64
+    LastUpdated *time.Time
+}
+
+type StateRates struct {
+    UsdBcv      RateData
+    EurBcv      RateData
+    UsdtBinance RateData
+}
+
 type State struct {
 	mu    sync.RWMutex
-	rates api.AllRates
+	rates StateRates
 }
 
 func NewState() *State {
 	return &State{}
 }
 
-func (s *State) UpdateRates(newRates api.AllRates) {
+func (s *State) UpdateRates(newRates StateRates) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.rates = newRates
 }
 
-func (s *State) GetRates() api.AllRates {
+func (s *State) GetRates() StateRates {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.rates
