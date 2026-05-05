@@ -4,6 +4,16 @@ info:
   version: "1.0.0"
 
 paths:
+  /health:
+    get:
+      operationId: GetHealth
+      responses:
+        '200':
+          description: "API health"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
   /rates:
     get:
       operationId: GetRates
@@ -17,6 +27,13 @@ paths:
 
 components:
   schemas:
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
     RateEntry:
       type: object
       required: [value, last_updated, data_age_seconds, is_stale]
