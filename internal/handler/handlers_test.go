@@ -14,7 +14,7 @@ func TestRatesHandlerSuccess(t *testing.T) {
 	appState := state.NewState()
 	appState.UpdateRates(state.ExchangeRates{UsdBCV: 480, EurBCV: 510, UsdtBinance: 530, LastUpdate: time.Now()})
 
-	handler := NewRatesHandler(appState)
+	handler := NewServer(appState)
 
 	req := httptest.NewRequest(http.MethodGet, "/rates", nil)
 
@@ -53,7 +53,7 @@ func TestRatesHandlerSuccess(t *testing.T) {
 func TestRatesHaTestRatesHandlerEmptyStatendlerSuccess(t *testing.T) {
 	appState := state.NewState()
 
-	handler := NewRatesHandler(appState)
+	handler := NewServer(appState)
 
 	req := httptest.NewRequest(http.MethodGet, "/rates", nil)
 
@@ -94,7 +94,7 @@ func TestRatesHandlerPOST(t *testing.T) {
 	appState := state.NewState()
 	appState.UpdateRates(state.ExchangeRates{UsdBCV: 480, EurBCV: 510, UsdtBinance: 530, LastUpdate: time.Now()})
 
-	handler := NewRatesHandler(appState)
+	handler := NewServer(appState)
 
 	req := httptest.NewRequest(http.MethodPost, "/rates", nil)
 
