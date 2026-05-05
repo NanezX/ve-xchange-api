@@ -7,14 +7,14 @@ import (
 )
 
 type RateData struct {
-    Value       float64
-    LastUpdated *time.Time
+	Value       float64
+	LastUpdated *time.Time
 }
 
 type StateRates struct {
-    UsdBcv      RateData
-    EurBcv      RateData
-    UsdtBinance RateData
+	UsdBcv      RateData
+	EurBcv      RateData
+	UsdtBinance RateData
 }
 
 type State struct {
