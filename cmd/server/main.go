@@ -48,8 +48,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/info", handler.InfoHandler{})
-	api.HandlerFromMux(handler.NewRatesHandler(appState), mux)
+	api.HandlerFromMux(handler.NewServer(appState), mux)
 
 	fmt.Printf("Servidor corriendo en http://localhost:%d\n", appConfig.AppPort)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", appConfig.AppPort), mux)
