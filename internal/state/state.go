@@ -1,35 +1,28 @@
 package state
 
 import (
+	"github.com/nanezx/ve-xchange-api/internal/api"
+	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"sync"
 	"time"
-
-	"github.com/nanezx/ve-xchange-api/internal/rates"
 )
-
-type ExchangeRates struct {
-	UsdBCV      float64   `json:"usd_bcv"`
-	EurBCV      float64   `json:"eur_bcv"`
-	UsdtBinance float64   `json:"usdt_binance"`
-	LastUpdate  time.Time `json:"last_update"`
-}
 
 type State struct {
 	mu    sync.RWMutex
-	rates ExchangeRates
+	rates api.AllRates
 }
 
 func NewState() *State {
 	return &State{}
 }
 
-func (s *State) UpdateRates(newRates ExchangeRates) {
+func (s *State) UpdateRates(newRates api.AllRates) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.rates = newRates
 }
 
-func (s *State) GetRates() ExchangeRates {
+func (s *State) GetRates() api.AllRates {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.rates
@@ -40,9 +33,13 @@ func UpdateBcvPrice(state *State, data rates.PriceResponse) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
-	state.rates.UsdBCV = data["USD_BCV"]
-	state.rates.EurBCV = data["EUR_BCV"]
-	state.rates.LastUpdate = time.Now()
+	// TODO: Add/fill all the values on each entry
+	now := time.Now()
+	state.rates.UsdBcv.Value = data["USD_BCV"]
+	state.rates.UsdBcv.LastUpdated = &now
+	state.rates.EurBcv.Value = data["EUR_BCV"]
+	state.rates.EurBcv.LastUpdated = &now
+
 }
 
 // FIXME: Add safety checks that exists those values on the maps
@@ -50,6 +47,9 @@ func UpdateBinancePrice(state *State, data rates.PriceResponse) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
-	state.rates.UsdtBinance = data["USDT_BINANCE"]
-	state.rates.LastUpdate = time.Now()
+	// TODO: Add/fill all the values on each entry
+	now := time.Now()
+	state.rates.UsdtBinance.Value = data["USDT_BINANCE"]
+	state.rates.UsdtBinance.LastUpdated = &now
+
 }
