@@ -12,6 +12,7 @@ import (
 	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"github.com/nanezx/ve-xchange-api/internal/state"
 	"github.com/nanezx/ve-xchange-api/internal/worker"
+	v3 "github.com/swaggest/swgui/v3"
 )
 
 func main() {
@@ -49,6 +50,11 @@ func main() {
 	mux := http.NewServeMux()
 
 	api.HandlerFromMux(handler.NewServer(appState), mux)
+
+	mux.HandleFunc("GET /openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "api/openapi.yaml")
+	})
+	mux.Handle("/docs/", v3.NewHandler("ve-xchange-api", "/openapi.yaml", "/docs/"))
 
 	fmt.Printf("Servidor corriendo en http://localhost:%d\n", appConfig.AppPort)
 	err = http.ListenAndServe(fmt.Sprintf(":%d", appConfig.AppPort), mux)
