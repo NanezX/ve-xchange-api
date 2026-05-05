@@ -18,6 +18,11 @@ type AllRates struct {
 	UsdtBinance RateEntry `json:"usdt_binance"`
 }
 
+// Health defines model for Health.
+type Health struct {
+	Status string `json:"status"`
+}
+
 // RateEntry defines model for RateEntry.
 type RateEntry struct {
 	DataAgeSeconds int        `json:"data_age_seconds"`
@@ -28,6 +33,9 @@ type RateEntry struct {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+
+	// (GET /health)
+	GetHealth(w http.ResponseWriter, r *http.Request)
 
 	// (GET /rates)
 	GetRates(w http.ResponseWriter, r *http.Request)
@@ -41,6 +49,20 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// GetHealth operation middleware
+func (siw *ServerInterfaceWrapper) GetHealth(w http.ResponseWriter, r *http.Request) {
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetHealth(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
 
 // GetRates operation middleware
 func (siw *ServerInterfaceWrapper) GetRates(w http.ResponseWriter, r *http.Request) {
@@ -176,6 +198,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/rates", wrapper.GetRates)
 
 	return m
