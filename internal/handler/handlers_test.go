@@ -7,102 +7,197 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nanezx/ve-xchange-api/internal/api"
 	"github.com/nanezx/ve-xchange-api/internal/state"
 )
 
-func TestRatesHandlerSuccess(t *testing.T) {
-	appState := state.NewState()
-	appState.UpdateRates(state.ExchangeRates{UsdBCV: 480, EurBCV: 510, UsdtBinance: 530, LastUpdate: time.Now()})
+// withFixedNow returns a Server whose internal clock is pinned for
+// deterministic age/staleness assertions.
+func withFixedNow(s *state.State, now time.Time) Server {
+	srv := NewServer(s)
+	srv.now = func() time.Time { return now }
+	return srv
+}
 
-	handler := NewServer(appState)
+func mountMux(t *testing.T, srv Server) http.Handler {
+	t.Helper()
+	mux := http.NewServeMux()
+	api.HandlerFromMux(srv, mux)
+	return mux
+}
+
+func TestGetRates_AllFresh(t *testing.T) {
+	now := time.Now()
+	ago := now.Add(-30 * time.Second)
+
+	st := state.NewState()
+	st.UpdateRates(state.StateRates{
+		UsdBcv:      state.RateData{Value: 480.5, LastUpdated: &ago},
+		EurBcv:      state.RateData{Value: 520.1, LastUpdated: &ago},
+		UsdtBinance: state.RateData{Value: 535.2, LastUpdated: &ago},
+	})
+
+	srv := withFixedNow(st, now)
+	mux := mountMux(t, srv)
 
 	req := httptest.NewRequest(http.MethodGet, "/rates", nil)
-
 	w := httptest.NewRecorder()
-
-	handler.ServeHTTP(w, req)
+	mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Fatalf("Expected 200, got %d", w.Code)
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if got := w.Header().Get("Content-Type"); got != "application/json" {
+		t.Fatalf("expected JSON content-type, got %q", got)
 	}
 
-	if w.Header().Get("Content-Type") != "application/json" {
-		t.Fatalf("Expected JSON content-type")
+	var resp api.AllRates
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
 	}
 
-	var response state.ExchangeRates
-	json.NewDecoder(w.Body).Decode(&response)
-
-	if response.UsdBCV != appState.GetRates().UsdBCV {
-		t.Fatalf("Expected %v, got %v", appState.GetRates().UsdBCV, response.UsdBCV)
+	if resp.UsdBcv.Value != 480.5 || resp.EurBcv.Value != 520.1 || resp.UsdtBinance.Value != 535.2 {
+		t.Fatalf("unexpected values: %+v", resp)
 	}
-
-	if response.EurBCV != appState.GetRates().EurBCV {
-		t.Fatalf("Expected %v, got %v", appState.GetRates().EurBCV, response.EurBCV)
+	if resp.UsdBcv.IsStale || resp.EurBcv.IsStale || resp.UsdtBinance.IsStale {
+		t.Fatalf("expected no stale entries: %+v", resp)
 	}
-
-	if response.UsdtBinance != appState.GetRates().UsdtBinance {
-		t.Fatalf("Expected %v, got %v", appState.GetRates().UsdtBinance, response.UsdtBinance)
-	}
-
-	if response.LastUpdate.IsZero() {
-		t.Fatalf("Expected LastUpdate to be populated")
+	if resp.UsdBcv.DataAgeSeconds != 30 {
+		t.Fatalf("expected age=30s, got %d", resp.UsdBcv.DataAgeSeconds)
 	}
 }
 
-func TestRatesHaTestRatesHandlerEmptyStatendlerSuccess(t *testing.T) {
-	appState := state.NewState()
-
-	handler := NewServer(appState)
+func TestGetRates_EmptyStateIsStale(t *testing.T) {
+	st := state.NewState()
+	srv := withFixedNow(st, time.Now())
+	mux := mountMux(t, srv)
 
 	req := httptest.NewRequest(http.MethodGet, "/rates", nil)
-
 	w := httptest.NewRecorder()
-
-	handler.ServeHTTP(w, req)
+	mux.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Fatalf("Expected 200, got %d", w.Code)
+		t.Fatalf("expected 200, got %d", w.Code)
 	}
 
-	if w.Header().Get("Content-Type") != "application/json" {
-		t.Fatalf("Expected JSON content-type")
+	var resp api.AllRates
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
 	}
 
-	var response state.ExchangeRates
-	json.NewDecoder(w.Body).Decode(&response)
-
-	zeroValue := 0.0
-	if response.UsdBCV != zeroValue {
-		t.Fatalf("Expected %v, got %v", zeroValue, response.UsdBCV)
+	if !resp.UsdBcv.IsStale || !resp.EurBcv.IsStale || !resp.UsdtBinance.IsStale {
+		t.Fatalf("expected every entry to be stale when state is empty: %+v", resp)
 	}
-
-	if response.EurBCV != zeroValue {
-		t.Fatalf("Expected %v, got %v", zeroValue, response.EurBCV)
-	}
-
-	if response.UsdtBinance != zeroValue {
-		t.Fatalf("Expected %v, got %v", zeroValue, response.UsdtBinance)
-	}
-
-	if !response.LastUpdate.IsZero() {
-		t.Fatalf("Expected LastUpdate to be zero")
+	if resp.UsdBcv.LastUpdated != nil {
+		t.Fatalf("expected null last_updated, got %v", resp.UsdBcv.LastUpdated)
 	}
 }
 
-func TestRatesHandlerPOST(t *testing.T) {
-	appState := state.NewState()
-	appState.UpdateRates(state.ExchangeRates{UsdBCV: 480, EurBCV: 510, UsdtBinance: 530, LastUpdate: time.Now()})
+func TestGetRatesCurrency_OK(t *testing.T) {
+	now := time.Now()
+	ago := now.Add(-1 * time.Minute)
+	st := state.NewState()
+	st.UpdateRates(state.StateRates{
+		UsdtBinance: state.RateData{Value: 540.0, LastUpdated: &ago},
+	})
 
-	handler := NewServer(appState)
+	srv := withFixedNow(st, now)
+	mux := mountMux(t, srv)
 
-	req := httptest.NewRequest(http.MethodPost, "/rates", nil)
-
+	req := httptest.NewRequest(http.MethodGet, "/rates/usdt_binance", nil)
 	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
 
-	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
 
-	if w.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("Expected 405, got %d", w.Code)
+	var resp api.RateEntry
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Value != 540.0 || resp.IsStale || resp.DataAgeSeconds != 60 {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+}
+
+func TestGetRatesCurrency_Unknown(t *testing.T) {
+	srv := withFixedNow(state.NewState(), time.Now())
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/rates/btc", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestGetHealth_OK(t *testing.T) {
+	now := time.Now()
+	recent := now.Add(-1 * time.Minute)
+	bcvRecent := now.Add(-1 * time.Hour)
+
+	st := state.NewState()
+	st.UpdateRates(state.StateRates{
+		UsdBcv:      state.RateData{Value: 1, LastUpdated: &bcvRecent},
+		EurBcv:      state.RateData{Value: 1, LastUpdated: &bcvRecent},
+		UsdtBinance: state.RateData{Value: 1, LastUpdated: &recent},
+	})
+	srv := withFixedNow(st, now)
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp api.Health
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Status != api.Ok {
+		t.Fatalf("expected status=ok, got %s", resp.Status)
+	}
+	if resp.Stale != nil && len(*resp.Stale) != 0 {
+		t.Fatalf("expected no stale list, got %v", *resp.Stale)
+	}
+}
+
+func TestGetHealth_DegradedWhenStale(t *testing.T) {
+	now := time.Now()
+	veryOld := now.Add(-1 * time.Hour) // > 15min Binance threshold
+	bcvOK := now.Add(-1 * time.Hour)
+
+	st := state.NewState()
+	st.UpdateRates(state.StateRates{
+		UsdBcv:      state.RateData{Value: 1, LastUpdated: &bcvOK},
+		EurBcv:      state.RateData{Value: 1, LastUpdated: &bcvOK},
+		UsdtBinance: state.RateData{Value: 1, LastUpdated: &veryOld},
+	})
+	srv := withFixedNow(st, now)
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503, got %d", w.Code)
+	}
+
+	var resp api.Health
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Status != api.Degraded {
+		t.Fatalf("expected status=degraded, got %s", resp.Status)
+	}
+	if resp.Stale == nil || len(*resp.Stale) != 1 || (*resp.Stale)[0] != api.UsdtBinance {
+		t.Fatalf("expected stale=[usdt_binance], got %v", resp.Stale)
 	}
 }
