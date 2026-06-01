@@ -9,7 +9,48 @@ import (
 	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/oapi-codegen/runtime"
 )
+
+// Defines values for Currency.
+const (
+	EurBcv      Currency = "eur_bcv"
+	UsdBcv      Currency = "usd_bcv"
+	UsdtBinance Currency = "usdt_binance"
+)
+
+// Valid indicates whether the value is a known member of the Currency enum.
+func (e Currency) Valid() bool {
+	switch e {
+	case EurBcv:
+		return true
+	case UsdBcv:
+		return true
+	case UsdtBinance:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for HealthStatus.
+const (
+	Degraded HealthStatus = "degraded"
+	Ok       HealthStatus = "ok"
+)
+
+// Valid indicates whether the value is a known member of the HealthStatus enum.
+func (e HealthStatus) Valid() bool {
+	switch e {
+	case Degraded:
+		return true
+	case Ok:
+		return true
+	default:
+		return false
+	}
+}
 
 // AllRates defines model for AllRates.
 type AllRates struct {
@@ -18,10 +59,23 @@ type AllRates struct {
 	UsdtBinance RateEntry `json:"usdt_binance"`
 }
 
+// Currency defines model for Currency.
+type Currency string
+
+// Error defines model for Error.
+type Error struct {
+	Error string `json:"error"`
+}
+
 // Health defines model for Health.
 type Health struct {
-	Status string `json:"status"`
+	// Stale List of currencies whose data exceeded the staleness threshold.
+	Stale  *[]Currency  `json:"stale,omitempty"`
+	Status HealthStatus `json:"status"`
 }
+
+// HealthStatus defines model for Health.Status.
+type HealthStatus string
 
 // RateEntry defines model for RateEntry.
 type RateEntry struct {
@@ -39,6 +93,9 @@ type ServerInterface interface {
 
 	// (GET /rates)
 	GetRates(w http.ResponseWriter, r *http.Request)
+
+	// (GET /rates/{currency})
+	GetRatesCurrency(w http.ResponseWriter, r *http.Request, currency Currency)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -69,6 +126,32 @@ func (siw *ServerInterfaceWrapper) GetRates(w http.ResponseWriter, r *http.Reque
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetRates(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRatesCurrency operation middleware
+func (siw *ServerInterfaceWrapper) GetRatesCurrency(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "currency" -------------
+	var currency Currency
+
+	err = runtime.BindStyledParameterWithOptions("simple", "currency", r.PathValue("currency"), &currency, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "currency", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRatesCurrency(w, r, currency)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -200,6 +283,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/rates", wrapper.GetRates)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/rates/{currency}", wrapper.GetRatesCurrency)
 
 	return m
 }
