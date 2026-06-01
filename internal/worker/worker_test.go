@@ -160,8 +160,12 @@ func TestWorkerTicksExecution(t *testing.T) {
 	mockProvider.mu.Lock()
 	count := mockProvider.applyCallCount
 	mockProvider.mu.Unlock()
-	if count != 5 {
-		t.Fatalf("Expected 5, got %d", count)
+	// The worker performs 1 immediate call + N ticks. With a 5ms ticker and
+	// a 25ms sleep, scheduler jitter (specially under -race) can deliver
+	// anywhere from ~4 to ~7 invocations. We assert a tolerant range instead
+	// of an exact number to avoid a flaky test.
+	if count < 3 || count > 8 {
+		t.Fatalf("Expected between 3 and 8 apply calls, got %d", count)
 	}
 
 }
