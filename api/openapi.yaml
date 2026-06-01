@@ -9,7 +9,13 @@ paths:
       operationId: GetHealth
       responses:
         '200':
-          description: "API health"
+          description: "API healthy: every rate is fresh."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: "API unhealthy: one or more rates are stale."
           content:
             application/json:
               schema:
@@ -24,16 +30,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AllRates'
+  /rates/{currency}:
+    get:
+      operationId: GetRatesCurrency
+      parameters:
+        - name: currency
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Currency'
+      responses:
+        '200':
+          description: "Current rate for the requested currency"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateEntry'
+        '404':
+          description: "Unknown currency"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
   schemas:
+    Currency:
+      type: string
+      enum:
+        - usd_bcv
+        - eur_bcv
+        - usdt_binance
     Health:
       type: object
       required: [status]
       properties:
         status:
           type: string
+          enum: [ok, degraded]
           example: ok
+        stale:
+          type: array
+          description: "List of currencies whose data exceeded the staleness threshold."
+          items:
+            $ref: '#/components/schemas/Currency'
     RateEntry:
       type: object
       required: [value, last_updated, data_age_seconds, is_stale]
@@ -60,3 +100,9 @@ components:
           $ref: '#/components/schemas/RateEntry'
         usdt_binance:
           $ref: '#/components/schemas/RateEntry'
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

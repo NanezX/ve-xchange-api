@@ -187,15 +187,18 @@ Phase 3 — CI/CD                               [DONE]
   2.2  .github/workflows/ci.yml file
   2.3  Branch protection on main
 
-Phase 4 — API Contract & Documentation
+Phase 4 — API Contract & Documentation        [DONE]
   7.1  Spec-first design with oapi-codegen (redefines response schemas)
   7.2  Swagger UI with swaggest/swgui (always available)
   7.3  New endpoints: /health, /rates/{currency}
+       (introduces per-currency staleness thresholds — partial 5.1)
 
 Phase 5 — Resilience & Observability
   4.2  Graceful Shutdown
   4.3  Retry with exponential backoff
-  5.1  Stale data detection (integrates with /health from 7.3)
+  5.1  Stale data detection — REMAINING WORK ONLY:
+         - thresholds & is_stale flag already shipped in 7.3
+         - pending: per-provider tuning + alerting hooks
   5.2  Structured logging with log/slog
   5.3  Consecutive failure counter
 
@@ -244,7 +247,7 @@ Phase 6 — Persistence
 
 ## Pillar 7: OpenAPI & API Documentation
 
-### 7.1 — Spec-First Design with `oapi-codegen`
+### 7.1 — Spec-First Design with `oapi-codegen` [DONE]
 
 | | Details |
 |---|---|
@@ -252,7 +255,7 @@ Phase 6 — Persistence
 | **Current state** | The API has no formal contract. `ExchangeRates` is a flat struct with a single `LastUpdate` for all currencies. There is no machine-readable spec, no path-param routes, and no `/health` endpoint. |
 | **Rationale** | Spec-first development means the contract is defined before implementation, not inferred from it. `oapi-codegen` with the `std-http` generator produces: **(a)** typed Go structs from `#/components/schemas` (replacing the hand-written `ExchangeRates`), **(b)** a `ServerInterface` with one method per endpoint — the compiler enforces that every endpoint is implemented, **(c)** a `HandlerFromMux(si ServerInterface, mux *http.ServeMux)` function that wires routes automatically. The new response schema will be per-currency objects (`{ value, last_updated, data_age_seconds, is_stale }`) instead of a flat struct, which is a prerequisite for Pillar 5.1 (stale data detection). No external router is introduced — `net/http` ServeMux (Go 1.22+) supports path parameters natively. |
 
-### 7.2 — Interactive API Documentation with `swaggest/swgui`
+### 7.2 — Interactive API Documentation with `swaggest/swgui` [DONE]
 
 | | Details |
 |---|---|
@@ -260,7 +263,7 @@ Phase 6 — Persistence
 | **Current state** | No API documentation exists. API consumers have no way to discover endpoints, required parameters, or response shapes without reading the source code. |
 | **Rationale** | `swaggest/swgui` embeds Swagger UI assets directly into the Go binary — no CDN, no external dependencies, works offline and in production. Serving docs unconditionally (not behind a dev-only flag) is appropriate for a public-facing exchange rate API: **(a)** external consumers benefit from live interactive documentation, **(b)** embedding eliminates the operational complexity of serving static files separately, **(c)** both `/docs` and `/openapi.yaml` are registered as standard `http.Handler` — zero framework coupling. Both `oapi-codegen` and `swgui` consume the same `api/openapi.yaml`, so docs are always in sync with the generated types. |
 
-### 7.3 — New Endpoints: `GET /health` and `GET /rates/{currency}`
+### 7.3 — New Endpoints: `GET /health` and `GET /rates/{currency}` [DONE]
 
 | | Details |
 |---|---|
