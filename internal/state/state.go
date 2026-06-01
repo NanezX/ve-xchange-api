@@ -1,9 +1,18 @@
 package state
 
 import (
-	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"sync"
 	"time"
+
+	"github.com/nanezx/ve-xchange-api/internal/rates"
+)
+
+// Map keys produced by each provider. Kept here as the single source of
+// truth so writers and readers cannot drift out of sync silently.
+const (
+	KeyUsdBcv      = "USD_BCV"
+	KeyEurBcv      = "EUR_BCV"
+	KeyUsdtBinance = "USDT_BINANCE"
 )
 
 type RateData struct {
@@ -39,28 +48,33 @@ func (s *State) GetRates() StateRates {
 	return s.rates
 }
 
-// FIXME: Add safety checks that exists those values on the maps
+// UpdateBcvPrice writes USD/EUR BCV values from a provider response.
+// Missing keys are skipped (previous value preserved) so a partial provider
+// failure cannot silently overwrite valid data with zeros.
 func UpdateBcvPrice(state *State, data rates.PriceResponse) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
-	// TODO: Add/fill all the values on each entry
 	now := time.Now()
-	state.rates.UsdBcv.Value = data["USD_BCV"]
-	state.rates.UsdBcv.LastUpdated = &now
-	state.rates.EurBcv.Value = data["EUR_BCV"]
-	state.rates.EurBcv.LastUpdated = &now
-
+	if v, ok := data[KeyUsdBcv]; ok {
+		state.rates.UsdBcv.Value = v
+		state.rates.UsdBcv.LastUpdated = &now
+	}
+	if v, ok := data[KeyEurBcv]; ok {
+		state.rates.EurBcv.Value = v
+		state.rates.EurBcv.LastUpdated = &now
+	}
 }
 
-// FIXME: Add safety checks that exists those values on the maps
+// UpdateBinancePrice writes the USDT/Binance value from a provider response.
+// Missing key is skipped (previous value preserved).
 func UpdateBinancePrice(state *State, data rates.PriceResponse) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
 
-	// TODO: Add/fill all the values on each entry
 	now := time.Now()
-	state.rates.UsdtBinance.Value = data["USDT_BINANCE"]
-	state.rates.UsdtBinance.LastUpdated = &now
-
+	if v, ok := data[KeyUsdtBinance]; ok {
+		state.rates.UsdtBinance.Value = v
+		state.rates.UsdtBinance.LastUpdated = &now
+	}
 }
