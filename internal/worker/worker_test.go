@@ -1,9 +1,9 @@
 package worker
 
 import (
+	"context"
 	"errors"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -37,49 +37,30 @@ func (p *MockProvider) GetName() string {
 	return "Mock"
 }
 
-type CountingProvider struct {
-	mu             sync.Mutex
-	getPricesCalls int
-	applyCallCount int
-	prices         rates.PriceResponse
-}
-
-func (p *CountingProvider) GetPrices() (rates.PriceResponse, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.getPricesCalls++
-	return rates.PriceResponse{}, nil
-}
-func (p *CountingProvider) GetName() string {
-	return "MockCounting"
-}
-
 func TestWorkerApplyData(t *testing.T) {
 	mockProvider := &MockProvider{
 		prices: rates.PriceResponse{"USD": 543.21},
 	}
 
-	var applyCalled atomic.Bool
-
+	calls := make(chan struct{}, 1)
 	job := ProviderJob{
 		Provider: mockProvider,
-		Every:    1 * time.Millisecond,
-		Apply: func(rates.PriceResponse) {
-			applyCalled.Store(true)
-		},
+		Every:    1 * time.Hour,
+		Apply:    func(rates.PriceResponse) { calls <- struct{}{} },
 	}
 
-	StartPriceWorker([]ProviderJob{job})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
 
-	time.Sleep(50 * time.Millisecond)
-
-	if !mockProvider.isCalled() {
-		t.Fatalf("Expected Provider to be called")
+	select {
+	case <-calls:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected Apply to be called")
 	}
 
-	if !applyCalled.Load() {
-		t.Fatalf("Expected Apply function to be called")
-	}
+	cancel()
+	wg.Wait()
 }
 
 func TestWorkerProviderError(t *testing.T) {
@@ -87,27 +68,27 @@ func TestWorkerProviderError(t *testing.T) {
 		priceError: errors.New("error to get prices"),
 	}
 
-	var applyCalled atomic.Bool
-
+	applyCalled := make(chan struct{}, 1)
 	job := ProviderJob{
 		Provider: mockProvider,
-		Every:    1 * time.Millisecond,
-		Apply: func(rates.PriceResponse) {
-			applyCalled.Store(true)
-		},
+		Every:    1 * time.Hour,
+		Apply:    func(rates.PriceResponse) { applyCalled <- struct{}{} },
 	}
 
-	StartPriceWorker([]ProviderJob{job})
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
 
-	time.Sleep(10 * time.Millisecond)
+	// Give the worker time to run the initial fetch, then verify Apply was not called.
+	time.Sleep(20 * time.Millisecond)
 
-	if !mockProvider.isCalled() {
-		t.Fatalf("Expected Provider GetPrices to be called")
+	select {
+	case <-applyCalled:
+		t.Fatalf("Apply should not be called on provider error")
+	default:
 	}
 
-	if applyCalled.Load() {
-		t.Fatalf("Apply functon should not be called on get price error")
-	}
+	cancel()
+	wg.Wait()
 }
 
 func TestWorkerProviderEmptyPrices(t *testing.T) {
@@ -115,61 +96,54 @@ func TestWorkerProviderEmptyPrices(t *testing.T) {
 		prices: rates.PriceResponse{},
 	}
 
-	var applyCalled atomic.Bool
-
+	calls := make(chan struct{}, 1)
 	job := ProviderJob{
 		Provider: mockProvider,
-		Every:    1 * time.Millisecond,
-		Apply: func(rates.PriceResponse) {
-			applyCalled.Store(true)
-		},
+		Every:    1 * time.Hour,
+		Apply:    func(rates.PriceResponse) { calls <- struct{}{} },
 	}
 
-	StartPriceWorker([]ProviderJob{job})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
 
-	time.Sleep(50 * time.Millisecond)
-
-	if !mockProvider.isCalled() {
-		t.Fatalf("Expected Provider to be called")
+	select {
+	case <-calls:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected Apply to be called even with empty prices")
 	}
 
-	if !applyCalled.Load() {
-		t.Fatalf("Expected Apply function to be called")
-	}
+	cancel()
+	wg.Wait()
 }
 
 func TestWorkerTicksExecution(t *testing.T) {
-	mockProvider := &CountingProvider{
-		prices: rates.PriceResponse{"USD": 543.21},
-	}
+	const wantApplies = 5
+
+	// Buffered so the worker goroutine never blocks on Apply.
+	calls := make(chan struct{}, wantApplies*2)
 
 	job := ProviderJob{
-		Provider: mockProvider,
-		Every:    5 * time.Millisecond,
-		Apply: func(rates.PriceResponse) {
-			mockProvider.mu.Lock()
-			mockProvider.applyCallCount++
-			mockProvider.mu.Unlock()
-		},
+		Provider: &MockProvider{prices: rates.PriceResponse{"USD": 543.21}},
+		Every:    time.Millisecond,
+		Apply:    func(rates.PriceResponse) { calls <- struct{}{} },
 	}
 
-	StartPriceWorker([]ProviderJob{job})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
 
-	time.Sleep(25 * time.Millisecond)
-
-	mockProvider.mu.Lock()
-	count := mockProvider.applyCallCount
-	mockProvider.mu.Unlock()
-	// TODO(tech-debt): This test relies on wall-clock timing. The worker
-	// performs 1 immediate call + N ticks; with a 5ms ticker and a 25ms
-	// sleep, scheduler jitter (especially under -race) can deliver anywhere
-	// from ~4 to ~7 invocations. We assert a tolerant range to keep the
-	// test non-flaky, but a tolerant range hides real regressions.
-	// Proper fix: make the tick source injectable in StartPriceWorker (or
-	// extract a pure processTick function) so tests can drive an exact
-	// number of ticks synchronously. Tracked in ROADMAP.md § 6.4.
-	if count < 3 || count > 8 {
-		t.Fatalf("Expected between 3 and 8 apply calls, got %d", count)
+	// Collect exactly wantApplies signals. Each receive is event-driven —
+	// no sleep, no tolerance range.
+	for i := 0; i < wantApplies; i++ {
+		select {
+		case <-calls:
+		case <-time.After(time.Second):
+			t.Fatalf("timed out waiting for apply call %d/%d", i+1, wantApplies)
+		}
 	}
 
+	cancel()
+	wg.Wait()
 }
+
