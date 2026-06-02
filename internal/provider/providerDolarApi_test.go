@@ -41,6 +41,7 @@ func TestGetPriceDolazApiServerInternalError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 500}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -53,6 +54,7 @@ func TestGetPriceDolazApiServerResponseError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 404}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -65,6 +67,7 @@ func TestGetPriceDolazApiNetworkError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{Error: errors.New("connection timeout")}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -77,6 +80,7 @@ func TestGetPriceDolazApiInvalidJSON(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 200, Body: "not json"}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -89,6 +93,7 @@ func TestGetPriceDolazApiEmptyResponse(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 200}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -143,6 +148,7 @@ func TestGetPriceDolazApiWrongType(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 

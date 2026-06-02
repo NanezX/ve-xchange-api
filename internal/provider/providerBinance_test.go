@@ -100,6 +100,7 @@ func TestGetPriceBinanceServerInternalError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 500}
 
 	provider := NewBinanceProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -112,6 +113,7 @@ func TestGetPriceBinanceServerResponseError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 404}
 
 	provider := NewBinanceProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -124,6 +126,7 @@ func TestGetPriceBinanceNetworkError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{Error: errors.New("connection timeout")}
 
 	provider := NewBinanceProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -136,6 +139,7 @@ func TestGetPriceBinanceInvalidJSON(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 200, Body: "not json"}
 
 	provider := NewBinanceProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -148,6 +152,7 @@ func TestGetPriceBinanceEmptyResponse(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 200}
 
 	provider := NewBinanceProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
