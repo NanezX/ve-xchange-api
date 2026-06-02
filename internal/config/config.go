@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 
@@ -24,7 +25,7 @@ func LoadConfig() (Config, error) {
 
 	appPort, err := strconv.ParseUint(os.Getenv("APP_PORT"), 10, 64)
 	if err != nil {
-		fmt.Println("Missing or malformed APP_PORT. Using 8080 as default")
+		slog.Warn("missing or malformed APP_PORT, using default", "default", 8080)
 		appPort = 8080
 	}
 
