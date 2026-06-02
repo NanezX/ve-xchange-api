@@ -122,7 +122,7 @@
 | **Current state** | `AppState` only stores the **latest value** of each rate (`UsdBCV`, `EurBCV`, `UsdtBinance`). If the process restarts, rates are zero-valued until the tickers fetch new data. No historical data exists. |
 | **Rationale** | **(a)** On startup, the latest rate can be loaded from the DB for immediate data availability (warm cache) instead of waiting for the first tick. **(b)** Historical data enables endpoints like "average rate over the last month", "daily variation", "trend chart" — high-value data for API consumers. **(c)** In-memory `AppState` continues serving `/rates` with ~0 latency (mutex read-lock only); the DB is written to asynchronously. SQLite (via `modernc.org/sqlite`, pure Go without CGO) is the simplest option (single file, no extra infrastructure); PostgreSQL for scenarios with multiple instances or high write volume. |
 
-### 4.2 — Graceful Shutdown
+### 4.2 — Graceful Shutdown [DONE]
 
 | | Details |
 |---|---|
@@ -194,7 +194,7 @@ Phase 4 — API Contract & Documentation        [DONE]
        (introduces per-currency staleness thresholds — partial 5.1)
 
 Phase 5 — Resilience & Observability
-  4.2  Graceful Shutdown
+  4.2  Graceful Shutdown                               [DONE]
   4.3  Retry with exponential backoff
   5.1  Stale data detection — REMAINING WORK ONLY:
          - thresholds & is_stale flag already shipped in 7.3
@@ -243,7 +243,7 @@ Phase 6 — Persistence
 | **Current state** | Provider tests cover zero values (`<= 0`) but not floating-point edge cases like `math.NaN()`, `math.Inf(1)`, or suspiciously large values (e.g., `999999999.0`). |
 | **Rationale** | JSON allows valid floats that are semantically broken for financial data. `json.Unmarshal` will happily decode a response with `"usd": 1e308` into a `float64`. These edge cases should be caught at the provider boundary before reaching `AppState` or the DB. |
 
-### 6.4 — Deterministic Worker Tests (Injectable Ticker)
+### 6.4 — Deterministic Worker Tests (Injectable Ticker) [DONE]
 
 | | Details |
 |---|---|
