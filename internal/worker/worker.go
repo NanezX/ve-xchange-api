@@ -2,7 +2,7 @@ package worker
 
 import (
 	"context"
-	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -33,12 +33,36 @@ func StartPriceWorker(ctx context.Context, jobs []ProviderJob) *sync.WaitGroup {
 		go func() {
 			defer wg.Done()
 
-			resp, err := currentJob.Provider.GetPrices()
-			if err != nil {
-				fmt.Printf("Error initializing %s: %v\n", currentJob.Provider.GetName(), err)
-			} else {
+			var consecutiveFails int64
+
+			fetch := func() {
+				resp, err := currentJob.Provider.GetPrices()
+				if err != nil {
+					consecutiveFails++
+					if consecutiveFails >= 3 {
+						slog.Error("consecutive provider failures",
+							"provider", currentJob.Provider.GetName(),
+							"consecutive_failures", consecutiveFails,
+							"error", err)
+					} else {
+						slog.Warn("provider fetch failed",
+							"provider", currentJob.Provider.GetName(),
+							"failure_number", consecutiveFails,
+							"error", err)
+					}
+					return
+				}
+				if consecutiveFails > 0 {
+					slog.Info("provider recovered",
+						"provider", currentJob.Provider.GetName(),
+						"after_failures", consecutiveFails)
+					consecutiveFails = 0
+				}
 				currentJob.Apply(resp)
+				slog.Info("provider updated", "provider", currentJob.Provider.GetName())
 			}
+
+			fetch()
 
 			ticker := time.NewTicker(currentJob.Every)
 			defer ticker.Stop()
@@ -48,13 +72,7 @@ func StartPriceWorker(ctx context.Context, jobs []ProviderJob) *sync.WaitGroup {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					resp, err := currentJob.Provider.GetPrices()
-					if err != nil {
-						fmt.Printf("Error updating %s: %v\n", currentJob.Provider.GetName(), err)
-						continue
-					}
-					currentJob.Apply(resp)
-					fmt.Printf("Updated %s price\n", currentJob.Provider.GetName())
+					fetch()
 				}
 			}
 		}()
