@@ -243,6 +243,14 @@ Phase 6 — Persistence
 | **Current state** | Provider tests cover zero values (`<= 0`) but not floating-point edge cases like `math.NaN()`, `math.Inf(1)`, or suspiciously large values (e.g., `999999999.0`). |
 | **Rationale** | JSON allows valid floats that are semantically broken for financial data. `json.Unmarshal` will happily decode a response with `"usd": 1e308` into a `float64`. These edge cases should be caught at the provider boundary before reaching `AppState` or the DB. |
 
+### 6.4 — Deterministic Worker Tests (Injectable Ticker)
+
+| | Details |
+|---|---|
+| **Improvement** | Refactor `StartPriceWorker` so that the periodic tick source is injectable (e.g., an optional `Ticks <-chan time.Time` field in `ProviderJob`, or by extracting the per-tick logic into a pure `processTick` function). Rewrite worker tests to drive the ticks explicitly instead of relying on `time.Sleep` + wall-clock timing. |
+| **Current state** | Worker tests in `internal/worker/worker_test.go` use `time.Sleep` to wait while `time.NewTicker` fires in the background, then assert how many times `Apply` was called. The current `TestWorkerTicksExecution` asserts a **tolerant range** (3–8 calls) instead of an exact number because scheduler jitter — especially under `-race` — produces different counts on every run. This is documented inline in the test as known tech debt. |
+| **Rationale** | **(a)** Time-based tests are inherently non-deterministic: they measure the OS scheduler, not the code under test. Under load (CI runners, `-race`, slow machines) they become flaky and erode trust in the suite. **(b)** A tolerant range hides real regressions — if a bug made the worker tick twice per period, the test would still pass. **(c)** An injectable tick source (or an extracted `processTick`) allows tests to send exactly N ticks synchronously, asserting exact counts in microseconds instead of waiting milliseconds. **(d)** The refactor is cheap today because the worker is small (~50 LOC); it will grow more expensive once cancellation (`context.Context`), retries, metrics, or multiple jobs per goroutine are added. |
+
 ---
 
 ## Pillar 7: OpenAPI & API Documentation
