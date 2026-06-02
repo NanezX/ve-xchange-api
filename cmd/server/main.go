@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/nanezx/ve-xchange-api/internal/api"
@@ -15,12 +19,17 @@ import (
 	v3 "github.com/swaggest/swgui/v3"
 )
 
+const shutdownTimeout = 10 * time.Second
+
 func main() {
 	appConfig, err := config.LoadConfig()
 	if err != nil {
 		fmt.Printf("Failed to load app configuration [Error]: %v", err)
 		return
 	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
 	client := &http.Client{
 		Timeout: 10 * time.Second,
@@ -44,8 +53,7 @@ func main() {
 		},
 	}
 
-	// Start worker
-	go worker.StartPriceWorker(providerJobs)
+	workerWg := worker.StartPriceWorker(ctx, providerJobs)
 
 	mux := http.NewServeMux()
 
@@ -56,10 +64,33 @@ func main() {
 	})
 	mux.Handle("/docs/", v3.NewHandler("ve-xchange-api", "/openapi.yaml", "/docs/"))
 
-	fmt.Printf("Servidor corriendo en http://localhost:%d\n", appConfig.AppPort)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", appConfig.AppPort), mux)
-	if err != nil {
-		fmt.Printf("Failed to serve the API [Error]: %v", err)
-		return
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", appConfig.AppPort),
+		Handler: mux,
 	}
+
+	serverErrCh := make(chan error, 1)
+	go func() {
+		fmt.Printf("Servidor corriendo en http://localhost:%d\n", appConfig.AppPort)
+		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErrCh <- err
+		}
+	}()
+
+	select {
+	case err := <-serverErrCh:
+		fmt.Printf("HTTP server failed: %v\n", err)
+		stop()
+	case <-ctx.Done():
+		fmt.Println("Shutdown signal received, draining...")
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+	defer cancel()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		fmt.Printf("HTTP shutdown error: %v\n", err)
+	}
+
+	workerWg.Wait()
+	fmt.Println("Shutdown complete.")
 }
