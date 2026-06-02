@@ -130,7 +130,7 @@
 | **Current state** | `main.go` uses `http.ListenAndServe` which blocks indefinitely with no controlled shutdown option. The worker is launched with `go StartPriceWorker()` without any cancellation mechanism. The `defer ticker.Stop()` calls in the worker **never execute** because the `for-select` is an infinite loop with no exit. |
 | **Rationale** | Without graceful shutdown: **(a)** a `SIGTERM` (deploy, restart, container scaling) cuts in-flight HTTP requests, leaving clients without a response, **(b)** tickers and goroutines remain as leaks until the OS kills the process, **(c)** with a future DB, a write cut in half could corrupt data. The standard Go solution: create a `context.Context` with `signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)`, pass it to the worker (so `case <-ctx.Done()` breaks the loop) and to `http.Server` (using `server.Shutdown(ctx)` which waits for in-flight requests). This is a requirement for any container-based deployment (Docker, Kubernetes). |
 
-### 4.3 — Retry with Exponential Backoff
+### 4.3 — Retry with Exponential Backoff [DONE]
 
 | | Details |
 |---|---|
@@ -150,7 +150,7 @@
 | **Current state** | `AppState.Rates.LastUpdate` is updated on each successful write, but **nobody checks its age**. If the Binance API fails for 2 hours, the `/rates` endpoint continues serving the 2-hour-old price **as if it were current**, with no warning to the consumer. |
 | **Rationale** | The API consumer needs to know whether the data is reliable. Serving stale data without a warning is **worse** than returning an explicit error — the consumer makes financial decisions based on data they believe is current but isn't. Implementation: **(a)** define staleness thresholds per provider (e.g., Binance > 15 min = stale, BCV > 12 hours = stale), **(b)** add fields to the response such as `"is_stale": false` and `"data_age_seconds": 42`, **(c)** optionally add a `/health` endpoint that returns `503 Service Unavailable` if any rate is stale — useful for load balancers and orchestrator health checks. |
 
-### 5.2 — Structured Logging with `log/slog`
+### 5.2 — Structured Logging with `log/slog` [DONE]
 
 | | Details |
 |---|---|
@@ -158,7 +158,7 @@
 | **Current state** | All logs use `fmt.Printf` and `fmt.Println`. There are no log levels, no structure, and no context (which provider failed, what price was updated, how long it took). |
 | **Rationale** | `fmt.Printf` is not logging — it is stdout output without metadata. `log/slog` provides: **(a)** levels (Debug, Info, Warn, Error) for filtering by severity, **(b)** JSON format for production (parseable by any monitoring system), **(c)** typed contextual fields (`slog.String("provider", "binance"), slog.Float64("price", 42.5), slog.Duration("latency", elapsed)`). This is a requirement for production debugging — when something fails at 3am, you need logs that tell you which provider failed, with what error, how long ago, and what the last successful price was. |
 
-### 5.3 — Consecutive Failure Counter per Provider
+### 5.3 — Consecutive Failure Counter per Provider [DONE]
 
 | | Details |
 |---|---|
@@ -195,12 +195,12 @@ Phase 4 — API Contract & Documentation        [DONE]
 
 Phase 5 — Resilience & Observability
   4.2  Graceful Shutdown                               [DONE]
-  4.3  Retry with exponential backoff
+  4.3  Retry with exponential backoff             [DONE]
   5.1  Stale data detection — REMAINING WORK ONLY:
          - thresholds & is_stale flag already shipped in 7.3
          - pending: per-provider tuning + alerting hooks
-  5.2  Structured logging with log/slog
-  5.3  Consecutive failure counter
+  5.2  Structured logging with log/slog           [DONE]
+  5.3  Consecutive failure counter                [DONE]
 
 Phase 6 — Persistence
   4.1  State as cache + DB for historical data
