@@ -146,4 +146,3 @@ func TestWorkerTicksExecution(t *testing.T) {
 	cancel()
 	wg.Wait()
 }
-
