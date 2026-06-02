@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
+	"os"
 	"os/signal"
 	"syscall"
 	"time"
@@ -22,10 +24,12 @@ import (
 const shutdownTimeout = 10 * time.Second
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+
 	appConfig, err := config.LoadConfig()
 	if err != nil {
-		fmt.Printf("Failed to load app configuration [Error]: %v", err)
-		return
+		slog.Error("failed to load configuration", "error", err)
+		os.Exit(1)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -71,7 +75,7 @@ func main() {
 
 	serverErrCh := make(chan error, 1)
 	go func() {
-		fmt.Printf("Servidor corriendo en http://localhost:%d\n", appConfig.AppPort)
+		slog.Info("server started", "port", appConfig.AppPort)
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErrCh <- err
 		}
@@ -79,18 +83,18 @@ func main() {
 
 	select {
 	case err := <-serverErrCh:
-		fmt.Printf("HTTP server failed: %v\n", err)
+		slog.Error("HTTP server failed", "error", err)
 		stop()
 	case <-ctx.Done():
-		fmt.Println("Shutdown signal received, draining...")
+		slog.Info("shutdown signal received, draining")
 	}
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		fmt.Printf("HTTP shutdown error: %v\n", err)
+		slog.Error("HTTP shutdown error", "error", err)
 	}
 
 	workerWg.Wait()
-	fmt.Println("Shutdown complete.")
+	slog.Info("shutdown complete")
 }
