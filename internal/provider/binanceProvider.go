@@ -8,19 +8,22 @@ import (
 	"net/http"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/nanezx/ve-xchange-api/internal/rates"
 )
 
 type BinanceProvider struct {
-	baseURL string
-	client  HTTPDoer
+	baseURL        string
+	client         HTTPDoer
+	retryBaseDelay time.Duration
 }
 
 func NewBinanceProvider(client HTTPDoer) *BinanceProvider {
 	return &BinanceProvider{
-		baseURL: "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
-		client:  client,
+		baseURL:        "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+		client:         client,
+		retryBaseDelay: time.Second,
 	}
 }
 
@@ -96,18 +99,14 @@ func (p *BinanceProvider) getOrders(tradeType TradeType, page uint) ([]float64, 
 		return nil, err
 	}
 
-	bufferBody := bytes.NewBuffer(jsonBody)
-
-	// Generate the request
-	req, err := http.NewRequest(http.MethodPost, p.baseURL, bufferBody)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	// Fetch JSON
-	data, err := fetchJson[JsonResponseP2P](p.client, req)
+	data, err := withRetry(3, p.retryBaseDelay, func() (JsonResponseP2P, error) {
+		req, err := http.NewRequest(http.MethodPost, p.baseURL, bytes.NewBuffer(jsonBody))
+		if err != nil {
+			return JsonResponseP2P{}, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		return fetchJson[JsonResponseP2P](p.client, req)
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("P2P [%s] prices - Error %w", tradeType, err)
