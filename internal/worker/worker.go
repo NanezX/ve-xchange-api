@@ -15,9 +15,15 @@ type PriceProvider interface {
 }
 
 type ProviderJob struct {
-	Provider PriceProvider
-	Every    time.Duration
-	Apply    func(rates.PriceResponse)
+	Provider  PriceProvider
+	Every     time.Duration
+	Apply     func(rates.PriceResponse)
+	// OnFail is called on every fetch failure once consecutiveFails reaches 3.
+	// Useful for marking provider state as degraded. Optional.
+	OnFail func(consecutiveFails int64)
+	// OnRecover is called on the first successful fetch after a streak of ≥3
+	// failures. Useful for clearing the degraded flag. Optional.
+	OnRecover func()
 }
 
 // StartPriceWorker launches one goroutine per job. Each goroutine performs an
@@ -44,6 +50,9 @@ func StartPriceWorker(ctx context.Context, jobs []ProviderJob) *sync.WaitGroup {
 							"provider", currentJob.Provider.GetName(),
 							"consecutive_failures", consecutiveFails,
 							"error", err)
+						if currentJob.OnFail != nil {
+							currentJob.OnFail(consecutiveFails)
+						}
 					} else {
 						slog.Warn("provider fetch failed",
 							"provider", currentJob.Provider.GetName(),
@@ -56,6 +65,9 @@ func StartPriceWorker(ctx context.Context, jobs []ProviderJob) *sync.WaitGroup {
 					slog.Info("provider recovered",
 						"provider", currentJob.Provider.GetName(),
 						"after_failures", consecutiveFails)
+					if consecutiveFails >= 3 && currentJob.OnRecover != nil {
+						currentJob.OnRecover()
+					}
 					consecutiveFails = 0
 				}
 				currentJob.Apply(resp)

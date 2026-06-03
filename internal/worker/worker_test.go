@@ -146,3 +146,90 @@ func TestWorkerTicksExecution(t *testing.T) {
 	cancel()
 	wg.Wait()
 }
+
+func TestWorkerOnFailCalledAfterThreeConsecutiveFailures(t *testing.T) {
+	failProvider := &MockProvider{priceError: errors.New("boom")}
+
+	onFail := make(chan int64, 10)
+	job := ProviderJob{
+		Provider:  failProvider,
+		Every:     time.Millisecond,
+		Apply:     func(rates.PriceResponse) {},
+		OnFail:    func(n int64) { onFail <- n },
+		OnRecover: func() { t.Error("OnRecover should not be called") },
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
+
+	// Wait for at least one OnFail signal (triggered at consecutiveFails==3).
+	select {
+	case n := <-onFail:
+		if n < 3 {
+			t.Fatalf("expected consecutiveFails>=3, got %d", n)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for OnFail")
+	}
+
+	cancel()
+	wg.Wait()
+}
+
+func TestWorkerOnRecoverCalledAfterStreak(t *testing.T) {
+	const failCount = 3
+
+	callCount := 0
+
+	recovered := make(chan struct{}, 1)
+	job := ProviderJob{
+		Provider: &mockSequenceProvider{
+			responses: func(n int) (rates.PriceResponse, error) {
+				if n < failCount {
+					return nil, errors.New("transient error")
+				}
+				return rates.PriceResponse{"USD": 1.0}, nil
+			},
+			count: &callCount,
+		},
+		Every:  time.Millisecond,
+		Apply:  func(rates.PriceResponse) {},
+		OnFail: func(_ int64) {},
+		OnRecover: func() {
+			select {
+			case recovered <- struct{}{}:
+			default:
+			}
+		},
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
+
+	select {
+	case <-recovered:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for OnRecover after streak")
+	}
+
+	cancel()
+	wg.Wait()
+}
+
+// mockSequenceProvider calls responses(n) for each successive GetPrices call.
+type mockSequenceProvider struct {
+	responses func(n int) (rates.PriceResponse, error)
+	count     *int
+	mu        sync.Mutex
+}
+
+func (m *mockSequenceProvider) GetPrices() (rates.PriceResponse, error) {
+	m.mu.Lock()
+	n := *m.count
+	*m.count++
+	m.mu.Unlock()
+	return m.responses(n)
+}
+
+func (m *mockSequenceProvider) GetName() string { return "mockSequence" }
+
