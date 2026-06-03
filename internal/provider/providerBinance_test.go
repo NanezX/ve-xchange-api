@@ -230,3 +230,64 @@ func TestGetPriceBinanceNoSuccess(t *testing.T) {
 	}
 
 }
+
+// --- Boundary / edge-value tests ---
+
+// makeP2PClient returns a FakeHTTPDoer that always responds with the given
+// prices (same data for every page of both SELL and BUY).
+func makeP2PClient(prices []float64) *FakeHTTPDoer {
+	data := make([]DataP2P, len(prices))
+	for i, p := range prices {
+		data[i] = DataP2P{Adv: DataAdv{Price: float64ToStr(p)}}
+	}
+	resp := JsonResponseP2P{Success: true, Data: data}
+	respBytes, _ := json.Marshal(resp)
+	body := string(respBytes)
+	return &FakeHTTPDoer{
+		StatusCode: 200,
+		DoFunc:     func(_ *http.Request) (string, error) { return body, nil },
+	}
+}
+
+func TestGetPriceBinanceNegativePricesFiltered(t *testing.T) {
+	// Mix of valid and negative prices — negatives must be filtered out.
+	p := NewBinanceProvider(makeP2PClient([]float64{500.0, -1.0, 600.0}))
+	p.retryBaseDelay = 0
+
+	prices, err := p.GetPrices()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	avg := prices["USDT_BINANCE"]
+	// Only 500 and 600 should count: avg = (500*10 + 600*10) / 20 = 550.
+	if avg != 550.0 {
+		t.Fatalf("expected avg=550.0 (negatives filtered), got %v", avg)
+	}
+}
+
+func TestGetPriceBinanceAllNegativePricesReturnsError(t *testing.T) {
+	p := NewBinanceProvider(makeP2PClient([]float64{-100.0, -200.0}))
+	p.retryBaseDelay = 0
+
+	_, err := p.GetPrices()
+	if err == nil {
+		t.Fatal("expected error when all prices are negative, got nil")
+	}
+}
+
+func TestGetPriceBinanceZeroPriceFiltered(t *testing.T) {
+	// Zero prices are non-positive and must be filtered.
+	p := NewBinanceProvider(makeP2PClient([]float64{0.0, 500.0}))
+	p.retryBaseDelay = 0
+
+	prices, err := p.GetPrices()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	avg := prices["USDT_BINANCE"]
+	// Only 500 should count across 10 pages * 2 types = 20 entries,
+	// but 20 zero entries are filtered, leaving 20 valid 500s → avg = 500.
+	if avg != 500.0 {
+		t.Fatalf("expected avg=500.0 (zeros filtered), got %v", avg)
+	}
+}

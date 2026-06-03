@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"slices"
 	"strconv"
@@ -173,13 +174,26 @@ func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 	}
 
 	var acc float64
+	var validCount int
 
 	for _, val := range combined {
-
+		if math.IsNaN(val) || math.IsInf(val, 0) || val <= 0 {
+			continue
+		}
 		acc += val
+		validCount++
 	}
 
-	return rates.PriceResponse{"USDT_BINANCE": acc / float64(len(combined))}, nil
+	if validCount == 0 {
+		return nil, fmt.Errorf("Binance prices - no valid (positive, finite) prices found")
+	}
+
+	avg := acc / float64(validCount)
+	if math.IsNaN(avg) || math.IsInf(avg, 0) {
+		return nil, fmt.Errorf("Binance prices - computed average is non-finite: %v", avg)
+	}
+
+	return rates.PriceResponse{"USDT_BINANCE": avg}, nil
 
 }
 
