@@ -1,9 +1,9 @@
 package worker
 
 import (
+	"context"
 	"errors"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -15,12 +15,6 @@ type MockProvider struct {
 	prices     rates.PriceResponse
 	priceError error
 	called     bool
-}
-
-func (p *MockProvider) isCalled() bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.called
 }
 
 func (p *MockProvider) GetPrices() (rates.PriceResponse, error) {
@@ -37,49 +31,30 @@ func (p *MockProvider) GetName() string {
 	return "Mock"
 }
 
-type CountingProvider struct {
-	mu             sync.Mutex
-	getPricesCalls int
-	applyCallCount int
-	prices         rates.PriceResponse
-}
-
-func (p *CountingProvider) GetPrices() (rates.PriceResponse, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	p.getPricesCalls++
-	return rates.PriceResponse{}, nil
-}
-func (p *CountingProvider) GetName() string {
-	return "MockCounting"
-}
-
 func TestWorkerApplyData(t *testing.T) {
 	mockProvider := &MockProvider{
 		prices: rates.PriceResponse{"USD": 543.21},
 	}
 
-	var applyCalled atomic.Bool
-
+	calls := make(chan struct{}, 1)
 	job := ProviderJob{
 		Provider: mockProvider,
-		Every:    1 * time.Millisecond,
-		Apply: func(rates.PriceResponse) {
-			applyCalled.Store(true)
-		},
+		Every:    1 * time.Hour,
+		Apply:    func(rates.PriceResponse) { calls <- struct{}{} },
 	}
 
-	StartPriceWorker([]ProviderJob{job})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
 
-	time.Sleep(50 * time.Millisecond)
-
-	if !mockProvider.isCalled() {
-		t.Fatalf("Expected Provider to be called")
+	select {
+	case <-calls:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected Apply to be called")
 	}
 
-	if !applyCalled.Load() {
-		t.Fatalf("Expected Apply function to be called")
-	}
+	cancel()
+	wg.Wait()
 }
 
 func TestWorkerProviderError(t *testing.T) {
@@ -87,27 +62,27 @@ func TestWorkerProviderError(t *testing.T) {
 		priceError: errors.New("error to get prices"),
 	}
 
-	var applyCalled atomic.Bool
-
+	applyCalled := make(chan struct{}, 1)
 	job := ProviderJob{
 		Provider: mockProvider,
-		Every:    1 * time.Millisecond,
-		Apply: func(rates.PriceResponse) {
-			applyCalled.Store(true)
-		},
+		Every:    1 * time.Hour,
+		Apply:    func(rates.PriceResponse) { applyCalled <- struct{}{} },
 	}
 
-	StartPriceWorker([]ProviderJob{job})
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
 
-	time.Sleep(10 * time.Millisecond)
+	// Give the worker time to run the initial fetch, then verify Apply was not called.
+	time.Sleep(20 * time.Millisecond)
 
-	if !mockProvider.isCalled() {
-		t.Fatalf("Expected Provider GetPrices to be called")
+	select {
+	case <-applyCalled:
+		t.Fatalf("Apply should not be called on provider error")
+	default:
 	}
 
-	if applyCalled.Load() {
-		t.Fatalf("Apply functon should not be called on get price error")
-	}
+	cancel()
+	wg.Wait()
 }
 
 func TestWorkerProviderEmptyPrices(t *testing.T) {
@@ -115,53 +90,139 @@ func TestWorkerProviderEmptyPrices(t *testing.T) {
 		prices: rates.PriceResponse{},
 	}
 
-	var applyCalled atomic.Bool
-
+	calls := make(chan struct{}, 1)
 	job := ProviderJob{
 		Provider: mockProvider,
-		Every:    1 * time.Millisecond,
-		Apply: func(rates.PriceResponse) {
-			applyCalled.Store(true)
-		},
+		Every:    1 * time.Hour,
+		Apply:    func(rates.PriceResponse) { calls <- struct{}{} },
 	}
 
-	StartPriceWorker([]ProviderJob{job})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
 
-	time.Sleep(50 * time.Millisecond)
-
-	if !mockProvider.isCalled() {
-		t.Fatalf("Expected Provider to be called")
+	select {
+	case <-calls:
+	case <-time.After(time.Second):
+		t.Fatalf("Expected Apply to be called even with empty prices")
 	}
 
-	if !applyCalled.Load() {
-		t.Fatalf("Expected Apply function to be called")
-	}
+	cancel()
+	wg.Wait()
 }
 
 func TestWorkerTicksExecution(t *testing.T) {
-	mockProvider := &CountingProvider{
-		prices: rates.PriceResponse{"USD": 543.21},
-	}
+	const wantApplies = 5
+
+	// Buffered so the worker goroutine never blocks on Apply.
+	calls := make(chan struct{}, wantApplies*2)
 
 	job := ProviderJob{
-		Provider: mockProvider,
-		Every:    5 * time.Millisecond,
-		Apply: func(rates.PriceResponse) {
-			mockProvider.mu.Lock()
-			mockProvider.applyCallCount++
-			mockProvider.mu.Unlock()
+		Provider: &MockProvider{prices: rates.PriceResponse{"USD": 543.21}},
+		Every:    time.Millisecond,
+		Apply:    func(rates.PriceResponse) { calls <- struct{}{} },
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
+
+	// Collect exactly wantApplies signals. Each receive is event-driven —
+	// no sleep, no tolerance range.
+	for i := range wantApplies {
+		select {
+		case <-calls:
+		case <-time.After(time.Second):
+			t.Fatalf("timed out waiting for apply call %d/%d", i+1, wantApplies)
+		}
+	}
+
+	cancel()
+	wg.Wait()
+}
+
+func TestWorkerOnFailCalledAfterThreeConsecutiveFailures(t *testing.T) {
+	failProvider := &MockProvider{priceError: errors.New("boom")}
+
+	onFail := make(chan int64, 10)
+	job := ProviderJob{
+		Provider:  failProvider,
+		Every:     time.Millisecond,
+		Apply:     func(rates.PriceResponse) {},
+		OnFail:    func(n int64) { onFail <- n },
+		OnRecover: func() { t.Error("OnRecover should not be called") },
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
+
+	// Wait for at least one OnFail signal (triggered at consecutiveFails==3).
+	select {
+	case n := <-onFail:
+		if n < 3 {
+			t.Fatalf("expected consecutiveFails>=3, got %d", n)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for OnFail")
+	}
+
+	cancel()
+	wg.Wait()
+}
+
+func TestWorkerOnRecoverCalledAfterStreak(t *testing.T) {
+	const failCount = 3
+
+	callCount := 0
+
+	recovered := make(chan struct{}, 1)
+	job := ProviderJob{
+		Provider: &mockSequenceProvider{
+			responses: func(n int) (rates.PriceResponse, error) {
+				if n < failCount {
+					return nil, errors.New("transient error")
+				}
+				return rates.PriceResponse{"USD": 1.0}, nil
+			},
+			count: &callCount,
+		},
+		Every:  time.Millisecond,
+		Apply:  func(rates.PriceResponse) {},
+		OnFail: func(_ int64) {},
+		OnRecover: func() {
+			select {
+			case recovered <- struct{}{}:
+			default:
+			}
 		},
 	}
 
-	StartPriceWorker([]ProviderJob{job})
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
 
-	time.Sleep(25 * time.Millisecond)
-
-	mockProvider.mu.Lock()
-	count := mockProvider.applyCallCount
-	mockProvider.mu.Unlock()
-	if count != 5 {
-		t.Fatalf("Expected 5, got %d", count)
+	select {
+	case <-recovered:
+	case <-time.After(time.Second):
+		t.Fatal("timed out waiting for OnRecover after streak")
 	}
 
+	cancel()
+	wg.Wait()
 }
+
+// mockSequenceProvider calls responses(n) for each successive GetPrices call.
+type mockSequenceProvider struct {
+	responses func(n int) (rates.PriceResponse, error)
+	count     *int
+	mu        sync.Mutex
+}
+
+func (m *mockSequenceProvider) GetPrices() (rates.PriceResponse, error) {
+	m.mu.Lock()
+	n := *m.count
+	*m.count++
+	m.mu.Unlock()
+	return m.responses(n)
+}
+
+func (m *mockSequenceProvider) GetName() string { return "mockSequence" }

@@ -1,0 +1,175 @@
+openapi: "3.0.3"
+info:
+  title: ve-exchange-api
+  version: "1.0.0"
+
+paths:
+  /health:
+    get:
+      operationId: GetHealth
+      responses:
+        '200':
+          description: "API healthy: every rate is fresh."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+        '503':
+          description: "API unhealthy: one or more rates are stale."
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /rates:
+    get:
+      operationId: GetRates
+      responses:
+        '200':
+          description: "Current rates for all the currencies (USD, EUR & USDT)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllRates'
+  /rates/{currency}:
+    get:
+      operationId: GetRatesCurrency
+      parameters:
+        - name: currency
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Currency'
+      responses:
+        '200':
+          description: "Current rate for the requested currency"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateEntry'
+        '404':
+          description: "Unknown currency"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /rates/{currency}/history:
+    get:
+      operationId: GetRatesCurrencyHistory
+      parameters:
+        - name: currency
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Currency'
+        - name: fromDate
+          in: query
+          required: true
+          description: "Start date (inclusive) in YYYY-MM-DD format"
+          schema:
+            type: string
+        - name: toDate
+          in: query
+          required: true
+          description: "End date (inclusive) in YYYY-MM-DD format"
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Historical rates for the requested currency and date range"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateHistory'
+        '400':
+          description: "Invalid date format"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: "Unknown currency"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: "Database not configured"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Currency:
+      type: string
+      enum:
+        - usd_bcv
+        - eur_bcv
+        - usdt_binance
+    Health:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded]
+          example: ok
+        stale:
+          type: array
+          description: "List of currencies whose data exceeded the staleness threshold."
+          items:
+            $ref: '#/components/schemas/Currency'
+    RateEntry:
+      type: object
+      required: [value, last_updated, data_age_seconds, is_stale]
+      properties:
+        value:
+          type: number
+          format: double
+          example: 570.11
+        last_updated:
+          type: string
+          format: date-time
+          nullable: true
+        data_age_seconds:
+          type: integer
+        is_stale:
+          type: boolean
+    AllRates:
+      type: object
+      required: [usd_bcv, eur_bcv, usdt_binance]
+      properties:
+        usd_bcv:
+          $ref: '#/components/schemas/RateEntry'
+        eur_bcv:
+          $ref: '#/components/schemas/RateEntry'
+        usdt_binance:
+          $ref: '#/components/schemas/RateEntry'
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+    HistoryEntry:
+      type: object
+      required: [value, recorded_at]
+      properties:
+        value:
+          type: number
+          format: double
+          example: 480.50
+        recorded_at:
+          type: string
+          format: date-time
+    RateHistory:
+      type: object
+      required: [currency, entries]
+      properties:
+        currency:
+          $ref: '#/components/schemas/Currency'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryEntry'

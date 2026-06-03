@@ -5,22 +5,26 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"slices"
 	"strconv"
+	"time"
 
 	"github.com/nanezx/ve-xchange-api/internal/rates"
 )
 
 type BinanceProvider struct {
-	baseURL string
-	client  HTTPDoer
+	baseURL        string
+	client         HTTPDoer
+	retryBaseDelay time.Duration
 }
 
 func NewBinanceProvider(client HTTPDoer) *BinanceProvider {
 	return &BinanceProvider{
-		baseURL: "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
-		client:  client,
+		baseURL:        "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search",
+		client:         client,
+		retryBaseDelay: time.Second,
 	}
 }
 
@@ -70,7 +74,7 @@ type JsonResponseP2P struct {
 // Generate only USDT-VES
 func (p *BinanceProvider) generateBodyP2P(tradeType TradeType, page uint) (BodyRequestP2P, error) {
 	if !tradeType.isValid() {
-		return BodyRequestP2P{}, errors.New("Invalid trade type")
+		return BodyRequestP2P{}, errors.New("invalid trade type")
 	}
 
 	return BodyRequestP2P{
@@ -96,18 +100,14 @@ func (p *BinanceProvider) getOrders(tradeType TradeType, page uint) ([]float64, 
 		return nil, err
 	}
 
-	bufferBody := bytes.NewBuffer(jsonBody)
-
-	// Generate the request
-	req, err := http.NewRequest(http.MethodPost, p.baseURL, bufferBody)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-
-	// Fetch JSON
-	data, err := fetchJson[JsonResponseP2P](p.client, req)
+	data, err := withRetry(3, p.retryBaseDelay, func() (JsonResponseP2P, error) {
+		req, err := http.NewRequest(http.MethodPost, p.baseURL, bytes.NewBuffer(jsonBody))
+		if err != nil {
+			return JsonResponseP2P{}, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		return fetchJson[JsonResponseP2P](p.client, req)
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("P2P [%s] prices - Error %w", tradeType, err)
@@ -170,17 +170,30 @@ func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 	combined := slices.Concat(sellPrices, buyPrices)
 
 	if len(combined) == 0 {
-		return nil, errors.New("No prices found")
+		return nil, errors.New("no prices found")
 	}
 
 	var acc float64
+	var validCount int
 
 	for _, val := range combined {
-
+		if math.IsNaN(val) || math.IsInf(val, 0) || val <= 0 {
+			continue
+		}
 		acc += val
+		validCount++
 	}
 
-	return rates.PriceResponse{"USDT_BINANCE": acc / float64(len(combined))}, nil
+	if validCount == 0 {
+		return nil, fmt.Errorf("binance prices - no valid (positive, finite) prices found")
+	}
+
+	avg := acc / float64(validCount)
+	if math.IsNaN(avg) || math.IsInf(avg, 0) {
+		return nil, fmt.Errorf("binance prices - computed average is non-finite: %v", avg)
+	}
+
+	return rates.PriceResponse{"USDT_BINANCE": avg}, nil
 
 }
 

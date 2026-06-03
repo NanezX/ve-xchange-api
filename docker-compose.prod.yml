@@ -1,0 +1,46 @@
+# Production compose — shared PostgreSQL with optikt app.
+#
+# This file is meant to be MERGED with the optikt docker-compose.prod.yml.
+# The postgres service here extends (or replaces) the one from optikt:
+#   - Same postgres container, two databases: optikt_db (optikt) and vexchange_db (this API)
+#   - The init script in docker/init/ creates vexchange_db on first start
+#
+# Usage (standalone, without optikt):
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Usage (merged with optikt compose):
+#   docker compose -f ../optikt/docker-compose.prod.yml \
+#                  -f docker-compose.prod.yml up -d
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      # Default DB for postgres — optikt's database. vexchange_db is created by the init script.
+      POSTGRES_DB: optikt_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Init script creates vexchange_db on first start
+      - ./docker/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER} -d optikt_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ve-xchange-api:
+    image: nanezx/ve-xchange-api:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_PORT: 8080
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/vexchange_db
+    # Do NOT expose port externally — consumed only by optikt (internal network)
+
+volumes:
+  postgres_data:

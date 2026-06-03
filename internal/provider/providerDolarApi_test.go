@@ -41,6 +41,7 @@ func TestGetPriceDolazApiServerInternalError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 500}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -53,6 +54,7 @@ func TestGetPriceDolazApiServerResponseError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 404}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -65,6 +67,7 @@ func TestGetPriceDolazApiNetworkError(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{Error: errors.New("connection timeout")}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -77,6 +80,7 @@ func TestGetPriceDolazApiInvalidJSON(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 200, Body: "not json"}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -89,6 +93,7 @@ func TestGetPriceDolazApiEmptyResponse(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{StatusCode: 200}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -143,6 +148,7 @@ func TestGetPriceDolazApiWrongType(t *testing.T) {
 	fakeClient := &FakeHTTPDoer{Body: jsonBody, StatusCode: 200}
 
 	provider := NewDolarDolarApiProvider(fakeClient)
+	provider.retryBaseDelay = 0
 
 	_, err := provider.GetPrices()
 
@@ -170,5 +176,73 @@ func TestGetPriceDolazApiUSDZero(t *testing.T) {
 
 	if err == nil {
 		t.Fatalf("Expected error, got nil")
+	}
+}
+
+// --- Boundary / edge-value tests ---
+
+func TestGetPriceDolazApiNegativeUSD(t *testing.T) {
+	fakeData := []DolarApiCurrencyItem{
+		{Moneda: "USD", Promedio: -100.0},
+		{Moneda: "EUR", Promedio: 50.0},
+	}
+	jsonBytes, _ := json.Marshal(fakeData)
+
+	provider := NewDolarDolarApiProvider(&FakeHTTPDoer{Body: string(jsonBytes), StatusCode: 200})
+	provider.retryBaseDelay = 0
+
+	_, err := provider.GetPrices()
+	if err == nil {
+		t.Fatal("expected error for negative USD price, got nil")
+	}
+}
+
+func TestGetPriceDolazApiNegativeEUR(t *testing.T) {
+	fakeData := []DolarApiCurrencyItem{
+		{Moneda: "USD", Promedio: 50.0},
+		{Moneda: "EUR", Promedio: -1.0},
+	}
+	jsonBytes, _ := json.Marshal(fakeData)
+
+	provider := NewDolarDolarApiProvider(&FakeHTTPDoer{Body: string(jsonBytes), StatusCode: 200})
+	provider.retryBaseDelay = 0
+
+	_, err := provider.GetPrices()
+	if err == nil {
+		t.Fatal("expected error for negative EUR price, got nil")
+	}
+}
+
+func TestGetPriceDolazApiExtremelyLargeValues(t *testing.T) {
+	// 1e308 is a valid float64 but financially nonsensical — provider currently
+	// accepts it (only validates > 0). This test documents the current behavior.
+	fakeData := []DolarApiCurrencyItem{
+		{Moneda: "USD", Promedio: 1e308},
+		{Moneda: "EUR", Promedio: 1e308},
+	}
+	jsonBytes, _ := json.Marshal(fakeData)
+
+	provider := NewDolarDolarApiProvider(&FakeHTTPDoer{Body: string(jsonBytes), StatusCode: 200})
+
+	prices, err := provider.GetPrices()
+	if err != nil {
+		t.Fatalf("unexpected error for large values: %v", err)
+	}
+	if prices["USD_BCV"] != 1e308 {
+		t.Fatalf("expected 1e308, got %v", prices["USD_BCV"])
+	}
+}
+
+func TestGetPriceDolazApiNullPromedioTreatedAsZero(t *testing.T) {
+	// When "promedio" is null in JSON, Go decodes it as 0.0.
+	// The provider's > 0 check must catch it.
+	body := `[{"moneda":"USD","promedio":null},{"moneda":"EUR","promedio":50.0}]`
+
+	provider := NewDolarDolarApiProvider(&FakeHTTPDoer{Body: body, StatusCode: 200})
+	provider.retryBaseDelay = 0
+
+	_, err := provider.GetPrices()
+	if err == nil {
+		t.Fatal("expected error when USD promedio is null (decoded as 0), got nil")
 	}
 }

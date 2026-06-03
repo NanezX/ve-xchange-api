@@ -2,21 +2,24 @@ package provider
 
 import (
 	"fmt"
+	"math"
 	"net/http"
+	"time"
 
 	"github.com/nanezx/ve-xchange-api/internal/rates"
 )
 
 type DolarApiProvider struct {
-	baseURL string
-	apiKey  string
-	client  HTTPDoer
+	baseURL        string
+	client         HTTPDoer
+	retryBaseDelay time.Duration
 }
 
 func NewDolarDolarApiProvider(client HTTPDoer) *DolarApiProvider {
 	return &DolarApiProvider{
-		baseURL: "https://ve.dolarapi.com/v1/cotizaciones",
-		client:  client,
+		baseURL:        "https://ve.dolarapi.com/v1/cotizaciones",
+		client:         client,
+		retryBaseDelay: time.Second,
 	}
 }
 
@@ -29,14 +32,13 @@ type DolarApiCurrencyItem struct {
 }
 
 func (p *DolarApiProvider) GetPrices() (rates.PriceResponse, error) {
-	// Generate request
-	req, err := http.NewRequest(http.MethodGet, p.baseURL, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch JSON
-	data, err := fetchJson[[]DolarApiCurrencyItem](p.client, req)
+	data, err := withRetry(3, p.retryBaseDelay, func() ([]DolarApiCurrencyItem, error) {
+		req, err := http.NewRequest(http.MethodGet, p.baseURL, nil)
+		if err != nil {
+			return nil, err
+		}
+		return fetchJson[[]DolarApiCurrencyItem](p.client, req)
+	})
 
 	if err != nil {
 		return nil, fmt.Errorf("DolarAPI prices - Error  %w", err)
@@ -62,6 +64,12 @@ func (p *DolarApiProvider) GetPrices() (rates.PriceResponse, error) {
 
 	if resp["USD_BCV"] <= 0 || resp["EUR_BCV"] <= 0 {
 		return nil, fmt.Errorf("DolarAPI prices - invalid rates: USD=%.2f, EUR=%.2f (must be > 0)",
+			resp["USD_BCV"], resp["EUR_BCV"])
+	}
+
+	if math.IsNaN(resp["USD_BCV"]) || math.IsNaN(resp["EUR_BCV"]) ||
+		math.IsInf(resp["USD_BCV"], 0) || math.IsInf(resp["EUR_BCV"], 0) {
+		return nil, fmt.Errorf("DolarAPI prices - non-finite rates: USD=%v, EUR=%v",
 			resp["USD_BCV"], resp["EUR_BCV"])
 	}
 
