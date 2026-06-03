@@ -196,9 +196,11 @@ Phase 4 — API Contract & Documentation        [DONE]
 Phase 5 — Resilience & Observability
   4.2  Graceful Shutdown                               [DONE]
   4.3  Retry with exponential backoff             [DONE]
-  5.1  Stale data detection — REMAINING WORK ONLY:
-         - thresholds & is_stale flag already shipped in 7.3
-         - pending: per-provider tuning + alerting hooks
+  5.1  Stale data detection                       [DONE]
+         - thresholds & is_stale flag (shipped in 7.3)
+         - ProviderFailing flag in RateData
+         - OnFail/OnRecover callbacks in ProviderJob
+         - isStale & toRateEntry check ProviderFailing
   5.2  Structured logging with log/slog           [DONE]
   5.3  Consecutive failure counter                [DONE]
 
