@@ -49,7 +49,7 @@ func TestGetPriceBinanceSuccess(t *testing.T) {
 			callCount++
 
 			var body BodyRequestP2P
-			json.NewDecoder(req.Body).Decode(&body)
+			_ = json.NewDecoder(req.Body).Decode(&body)
 
 			switch body.TradeType {
 			case "SELL":
@@ -171,7 +171,7 @@ func TestGetPriceBinanceNoPricesFound(t *testing.T) {
 		DoFunc: func(req *http.Request) (string, error) {
 
 			var body BodyRequestP2P
-			json.NewDecoder(req.Body).Decode(&body)
+			_ = json.NewDecoder(req.Body).Decode(&body)
 
 			switch body.TradeType {
 			case "SELL":
@@ -205,7 +205,7 @@ func TestGetPriceBinanceNoSuccess(t *testing.T) {
 		DoFunc: func(req *http.Request) (string, error) {
 
 			var body BodyRequestP2P
-			json.NewDecoder(req.Body).Decode(&body)
+			_ = json.NewDecoder(req.Body).Decode(&body)
 
 			switch body.TradeType {
 			case "SELL":

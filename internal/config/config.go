@@ -19,7 +19,7 @@ func LoadConfig() (Config, error) {
 	err := godotenv.Load()
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
-			return Config{}, fmt.Errorf("Malformed env file: %w", err)
+			return Config{}, fmt.Errorf("malformed env file: %w", err)
 		}
 		// Continue
 	}

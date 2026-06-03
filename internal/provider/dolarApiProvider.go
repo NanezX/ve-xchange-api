@@ -11,7 +11,6 @@ import (
 
 type DolarApiProvider struct {
 	baseURL        string
-	apiKey         string
 	client         HTTPDoer
 	retryBaseDelay time.Duration
 }

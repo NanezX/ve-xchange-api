@@ -74,7 +74,7 @@ type JsonResponseP2P struct {
 // Generate only USDT-VES
 func (p *BinanceProvider) generateBodyP2P(tradeType TradeType, page uint) (BodyRequestP2P, error) {
 	if !tradeType.isValid() {
-		return BodyRequestP2P{}, errors.New("Invalid trade type")
+		return BodyRequestP2P{}, errors.New("invalid trade type")
 	}
 
 	return BodyRequestP2P{
@@ -170,7 +170,7 @@ func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 	combined := slices.Concat(sellPrices, buyPrices)
 
 	if len(combined) == 0 {
-		return nil, errors.New("No prices found")
+		return nil, errors.New("no prices found")
 	}
 
 	var acc float64

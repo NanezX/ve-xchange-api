@@ -10,12 +10,14 @@ import (
 func setenv(t *testing.T, key, value string) {
 	t.Helper()
 	prev, hadPrev := os.LookupEnv(key)
-	os.Setenv(key, value)
+	if err := os.Setenv(key, value); err != nil {
+		t.Fatalf("setenv %s: %v", key, err)
+	}
 	t.Cleanup(func() {
 		if hadPrev {
-			os.Setenv(key, prev)
+			_ = os.Setenv(key, prev)
 		} else {
-			os.Unsetenv(key)
+			_ = os.Unsetenv(key)
 		}
 	})
 }
@@ -23,10 +25,12 @@ func setenv(t *testing.T, key, value string) {
 func unsetenv(t *testing.T, key string) {
 	t.Helper()
 	prev, hadPrev := os.LookupEnv(key)
-	os.Unsetenv(key)
+	if err := os.Unsetenv(key); err != nil {
+		t.Fatalf("unsetenv %s: %v", key, err)
+	}
 	t.Cleanup(func() {
 		if hadPrev {
-			os.Setenv(key, prev)
+			_ = os.Setenv(key, prev)
 		}
 	})
 }

@@ -40,7 +40,7 @@ func fetchJson[T any](client HTTPDoer, req *http.Request) (T, error) {
 	if err != nil {
 		return result, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		errorBody, _ := io.ReadAll(resp.Body)

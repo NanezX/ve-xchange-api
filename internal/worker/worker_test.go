@@ -17,12 +17,6 @@ type MockProvider struct {
 	called     bool
 }
 
-func (p *MockProvider) isCalled() bool {
-	p.mu.RLock()
-	defer p.mu.RUnlock()
-	return p.called
-}
-
 func (p *MockProvider) GetPrices() (rates.PriceResponse, error) {
 	p.mu.Lock()
 	p.called = true

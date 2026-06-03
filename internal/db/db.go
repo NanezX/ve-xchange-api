@@ -62,7 +62,7 @@ func RunMigrations(connString string) error {
 	if err != nil {
 		return fmt.Errorf("db.RunMigrations open: %w", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	goose.SetBaseFS(migrationFiles)
 	if err := goose.SetDialect("postgres"); err != nil {
