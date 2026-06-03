@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,7 @@ import (
 	"time"
 
 	"github.com/nanezx/ve-xchange-api/internal/api"
+	"github.com/nanezx/ve-xchange-api/internal/db"
 	"github.com/nanezx/ve-xchange-api/internal/state"
 )
 
@@ -275,5 +277,106 @@ func TestGetRates_ProviderFailingIsStaleEvenIfRecent(t *testing.T) {
 	}
 	if resp.UsdtBinance.IsStale {
 		t.Fatal("expected UsdtBinance.is_stale=false (not failing)")
+	}
+}
+
+// --- History endpoint ---
+
+// mockStore is an in-memory implementation of db.Store for handler tests.
+type mockStore struct {
+	entries []db.HistoryEntry
+	lastErr error
+}
+
+func (m *mockStore) InsertRate(_ context.Context, _ string, _ float64, _ time.Time) error {
+	return nil
+}
+
+func (m *mockStore) GetHistory(_ context.Context, _ string, _, _ time.Time) ([]db.HistoryEntry, error) {
+	return m.entries, m.lastErr
+}
+
+func (m *mockStore) Close() {}
+
+func withStore(s *state.State, store db.Store) Server {
+	srv := NewServerWithStore(s, store)
+	return srv
+}
+
+func TestGetRatesCurrencyHistory_NoStore_Returns503(t *testing.T) {
+	st := state.NewState()
+	srv := NewServer(st)
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/rates/usd_bcv/history?fromDate=2026-01-01&toDate=2026-01-31", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 when store is nil, got %d", w.Code)
+	}
+}
+
+func TestGetRatesCurrencyHistory_InvalidDate_Returns400(t *testing.T) {
+	st := state.NewState()
+	srv := withStore(st, &mockStore{})
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/rates/usd_bcv/history?fromDate=bad&toDate=2026-01-31", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d", w.Code)
+	}
+}
+
+func TestGetRatesCurrencyHistory_OK(t *testing.T) {
+	ts1 := time.Date(2026, 1, 10, 12, 0, 0, 0, time.UTC)
+	ts2 := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
+
+	st := state.NewState()
+	srv := withStore(st, &mockStore{
+		entries: []db.HistoryEntry{
+			{Value: 480.5, RecordedAt: ts1},
+			{Value: 481.0, RecordedAt: ts2},
+		},
+	})
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/rates/usd_bcv/history?fromDate=2026-01-01&toDate=2026-01-31", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp api.RateHistory
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Currency != api.UsdBcv {
+		t.Fatalf("expected currency=usd_bcv, got %s", resp.Currency)
+	}
+	if len(resp.Entries) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(resp.Entries))
+	}
+	if resp.Entries[0].Value != 480.5 {
+		t.Fatalf("expected first value=480.5, got %f", resp.Entries[0].Value)
+	}
+}
+
+func TestGetRatesCurrencyHistory_UnknownCurrency_Returns404(t *testing.T) {
+	st := state.NewState()
+	srv := withStore(st, &mockStore{})
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/rates/unknown_xyz/history?fromDate=2026-01-01&toDate=2026-01-31", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fatalf("expected 404, got %d", w.Code)
 	}
 }
