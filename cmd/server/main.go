@@ -45,15 +45,19 @@ func main() {
 	providerJobs := []worker.ProviderJob{
 		// DolarAPI
 		{
-			Provider: provider.NewDolarDolarApiProvider(client),
-			Every:    6 * time.Hour,
-			Apply:    func(pr rates.PriceResponse) { state.UpdateBcvPrice(appState, pr) },
+			Provider:  provider.NewDolarDolarApiProvider(client),
+			Every:     6 * time.Hour,
+			Apply:     func(pr rates.PriceResponse) { state.UpdateBcvPrice(appState, pr) },
+			OnFail:    func(_ int64) { state.MarkBcvFailing(appState) },
+			OnRecover: func() { state.ClearBcvFailing(appState) },
 		},
 		// P2P Binance API
 		{
-			Provider: provider.NewBinanceProvider(client),
-			Every:    5 * time.Minute,
-			Apply:    func(pr rates.PriceResponse) { state.UpdateBinancePrice(appState, pr) },
+			Provider:  provider.NewBinanceProvider(client),
+			Every:     5 * time.Minute,
+			Apply:     func(pr rates.PriceResponse) { state.UpdateBinancePrice(appState, pr) },
+			OnFail:    func(_ int64) { state.MarkBinanceFailing(appState) },
+			OnRecover: func() { state.ClearBinanceFailing(appState) },
 		},
 	}
 
