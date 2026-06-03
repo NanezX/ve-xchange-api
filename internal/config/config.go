@@ -11,7 +11,8 @@ import (
 )
 
 type Config struct {
-	AppPort uint
+	AppPort     uint
+	DatabaseURL string
 }
 
 func LoadConfig() (Config, error) {
@@ -30,7 +31,8 @@ func LoadConfig() (Config, error) {
 	}
 
 	return Config{
-		AppPort: uint(appPort),
+		AppPort:     uint(appPort),
+		DatabaseURL: os.Getenv("DATABASE_URL"),
 	}, nil
 
 }
