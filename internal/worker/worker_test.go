@@ -232,4 +232,3 @@ func (m *mockSequenceProvider) GetPrices() (rates.PriceResponse, error) {
 }
 
 func (m *mockSequenceProvider) GetName() string { return "mockSequence" }
-

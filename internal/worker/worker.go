@@ -15,9 +15,9 @@ type PriceProvider interface {
 }
 
 type ProviderJob struct {
-	Provider  PriceProvider
-	Every     time.Duration
-	Apply     func(rates.PriceResponse)
+	Provider PriceProvider
+	Every    time.Duration
+	Apply    func(rates.PriceResponse)
 	// OnFail is called on every fetch failure once consecutiveFails reaches 3.
 	// Useful for marking provider state as degraded. Optional.
 	OnFail func(consecutiveFails int64)
