@@ -32,7 +32,7 @@ services:
       retries: 5
 
   ve-xchange-api:
-    image: nanezx/ve-xchange-api:latest
+    image: nanez/ve-xchange-api:latest
     restart: unless-stopped
     depends_on:
       postgres:
