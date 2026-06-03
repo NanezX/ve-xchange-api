@@ -13,6 +13,7 @@ import (
 
 	"github.com/nanezx/ve-xchange-api/internal/api"
 	"github.com/nanezx/ve-xchange-api/internal/config"
+	"github.com/nanezx/ve-xchange-api/internal/db"
 	"github.com/nanezx/ve-xchange-api/internal/handler"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"github.com/nanezx/ve-xchange-api/internal/rates"
@@ -41,21 +42,65 @@ func main() {
 
 	appState := state.NewState()
 
+	// Initialise database store if DATABASE_URL is configured.
+	var dbStore db.Store
+	if appConfig.DatabaseURL != "" {
+		store, err := db.New(ctx, appConfig.DatabaseURL)
+		if err != nil {
+			slog.Error("failed to connect to database", "error", err)
+			os.Exit(1)
+		}
+		if err := store.CreateSchema(ctx); err != nil {
+			slog.Error("failed to create schema", "error", err)
+			os.Exit(1)
+		}
+		dbStore = store
+		defer dbStore.Close()
+		slog.Info("database connected")
+	} else {
+		slog.Error("DATABASE_URL is not set")
+		os.Exit(1)
+	}
+
 	// Add provider to lists
 	providerJobs := []worker.ProviderJob{
 		// DolarAPI
 		{
-			Provider:  provider.NewDolarDolarApiProvider(client),
-			Every:     6 * time.Hour,
-			Apply:     func(pr rates.PriceResponse) { state.UpdateBcvPrice(appState, pr) },
+			Provider: provider.NewDolarDolarApiProvider(client),
+			Every:    6 * time.Hour,
+			Apply: func(pr rates.PriceResponse) {
+				state.UpdateBcvPrice(appState, pr)
+				if dbStore != nil {
+					now := time.Now()
+					if v, ok := pr[state.KeyUsdBcv]; ok {
+						if err := dbStore.InsertRate(ctx, string(api.UsdBcv), v, now); err != nil {
+							slog.Warn("failed to persist usd_bcv rate", "error", err)
+						}
+					}
+					if v, ok := pr[state.KeyEurBcv]; ok {
+						if err := dbStore.InsertRate(ctx, string(api.EurBcv), v, now); err != nil {
+							slog.Warn("failed to persist eur_bcv rate", "error", err)
+						}
+					}
+				}
+			},
 			OnFail:    func(_ int64) { state.MarkBcvFailing(appState) },
 			OnRecover: func() { state.ClearBcvFailing(appState) },
 		},
 		// P2P Binance API
 		{
-			Provider:  provider.NewBinanceProvider(client),
-			Every:     5 * time.Minute,
-			Apply:     func(pr rates.PriceResponse) { state.UpdateBinancePrice(appState, pr) },
+			Provider: provider.NewBinanceProvider(client),
+			Every:    5 * time.Minute,
+			Apply: func(pr rates.PriceResponse) {
+				state.UpdateBinancePrice(appState, pr)
+				if dbStore != nil {
+					if v, ok := pr[state.KeyUsdtBinance]; ok {
+						if err := dbStore.InsertRate(ctx, string(api.UsdtBinance), v, time.Now()); err != nil {
+							slog.Warn("failed to persist usdt_binance rate", "error", err)
+						}
+					}
+				}
+			},
 			OnFail:    func(_ int64) { state.MarkBinanceFailing(appState) },
 			OnRecover: func() { state.ClearBinanceFailing(appState) },
 		},
@@ -65,7 +110,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	api.HandlerFromMux(handler.NewServer(appState), mux)
+	api.HandlerFromMux(handler.NewServerWithStore(appState, dbStore), mux)
 
 	mux.HandleFunc("GET /openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "api/openapi.yaml")
