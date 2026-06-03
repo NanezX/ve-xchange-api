@@ -135,7 +135,7 @@ func TestWorkerTicksExecution(t *testing.T) {
 
 	// Collect exactly wantApplies signals. Each receive is event-driven —
 	// no sleep, no tolerance range.
-	for i := 0; i < wantApplies; i++ {
+	for i := range wantApplies {
 		select {
 		case <-calls:
 		case <-time.After(time.Second):

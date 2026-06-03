@@ -19,7 +19,7 @@ func withRetry[T any](maxAttempts int, baseDelay time.Duration, fn func() (T, er
 	var zero T
 	delay := baseDelay
 	var lastErr error
-	for i := 0; i < maxAttempts; i++ {
+	for i := range maxAttempts {
 		result, err := fn()
 		if err == nil {
 			return result, nil
