@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/nanezx/ve-xchange-api/internal/api"
+	"github.com/nanezx/ve-xchange-api/internal/db"
 	"github.com/nanezx/ve-xchange-api/internal/state"
 )
 
@@ -18,11 +19,20 @@ const (
 
 type Server struct {
 	appState *state.State
+	store    db.Store
 	now      func() time.Time
 }
 
+// NewServer creates a Server with no database store.
+// Use NewServerWithStore when historical data persistence is available.
 func NewServer(appState *state.State) Server {
 	return Server{appState: appState, now: time.Now}
+}
+
+// NewServerWithStore creates a Server backed by a database store for
+// historical rate queries.
+func NewServerWithStore(appState *state.State, store db.Store) Server {
+	return Server{appState: appState, store: store, now: time.Now}
 }
 
 func (h Server) GetRates(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +126,49 @@ func isStale(d state.RateData, threshold time.Duration, now time.Time) bool {
 		return true
 	}
 	return now.Sub(*d.LastUpdated) > threshold
+}
+
+func (h Server) GetRatesCurrencyHistory(w http.ResponseWriter, r *http.Request, currency api.Currency, params api.GetRatesCurrencyHistoryParams) {
+	if !currency.Valid() {
+		writeJSON(w, http.StatusNotFound, api.Error{Error: "unknown currency"})
+		return
+	}
+	if h.store == nil {
+		writeJSON(w, http.StatusServiceUnavailable, api.Error{Error: "database not configured"})
+		return
+	}
+
+	from, err := time.Parse(time.DateOnly, params.FromDate)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, api.Error{Error: "invalid fromDate: expected YYYY-MM-DD"})
+		return
+	}
+	to, err := time.Parse(time.DateOnly, params.ToDate)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, api.Error{Error: "invalid toDate: expected YYYY-MM-DD"})
+		return
+	}
+	// Make 'to' exclusive-end: include the full last day.
+	to = to.AddDate(0, 0, 1)
+
+	entries, err := h.store.GetHistory(r.Context(), string(currency), from, to)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, api.Error{Error: "failed to query history"})
+		return
+	}
+
+	apiEntries := make([]api.HistoryEntry, len(entries))
+	for i, e := range entries {
+		apiEntries[i] = api.HistoryEntry{
+			Value:      e.Value,
+			RecordedAt: e.RecordedAt,
+		}
+	}
+
+	writeJSON(w, http.StatusOK, api.RateHistory{
+		Currency: currency,
+		Entries:  apiEntries,
+	})
 }
 
 func writeJSON(w http.ResponseWriter, status int, body any) {
