@@ -277,4 +277,3 @@ func TestGetRates_ProviderFailingIsStaleEvenIfRecent(t *testing.T) {
 		t.Fatal("expected UsdtBinance.is_stale=false (not failing)")
 	}
 }
-

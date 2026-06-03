@@ -277,4 +277,3 @@ func TestConcurrentFailingFlagUpdates(t *testing.T) {
 
 	wg.Wait()
 }
-
