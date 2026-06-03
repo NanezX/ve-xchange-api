@@ -89,10 +89,10 @@ func (h Server) GetHealth(w http.ResponseWriter, r *http.Request) {
 // toRateEntry projects a state.RateData onto the api.RateEntry contract,
 // computing age and staleness against the provided threshold.
 func toRateEntry(d state.RateData, threshold time.Duration, now time.Time) api.RateEntry {
-	if d.LastUpdated == nil {
+	if d.LastUpdated == nil || d.ProviderFailing {
 		return api.RateEntry{
 			Value:          d.Value,
-			LastUpdated:    nil,
+			LastUpdated:    d.LastUpdated,
 			DataAgeSeconds: 0,
 			IsStale:        true,
 		}
@@ -109,6 +109,9 @@ func toRateEntry(d state.RateData, threshold time.Duration, now time.Time) api.R
 }
 
 func isStale(d state.RateData, threshold time.Duration, now time.Time) bool {
+	if d.ProviderFailing {
+		return true
+	}
 	if d.LastUpdated == nil {
 		return true
 	}

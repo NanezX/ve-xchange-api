@@ -201,3 +201,80 @@ func TestGetHealth_DegradedWhenStale(t *testing.T) {
 		t.Fatalf("expected stale=[usdt_binance], got %v", resp.Stale)
 	}
 }
+
+func TestGetHealth_DegradedWhenProviderFailing(t *testing.T) {
+	// Timestamps are all fresh, but the Binance provider is marked as failing.
+	// /health must still return 503 and include usdt_binance in the stale list.
+	now := time.Now()
+	recent := now.Add(-1 * time.Minute)
+	bcvRecent := now.Add(-1 * time.Hour)
+
+	st := state.NewState()
+	st.UpdateRates(state.StateRates{
+		UsdBcv:      state.RateData{Value: 480.0, LastUpdated: &bcvRecent},
+		EurBcv:      state.RateData{Value: 520.0, LastUpdated: &bcvRecent},
+		UsdtBinance: state.RateData{Value: 530.0, LastUpdated: &recent},
+	})
+	state.MarkBinanceFailing(st)
+
+	srv := withFixedNow(st, now)
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 (provider failing), got %d", w.Code)
+	}
+
+	var resp api.Health
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Status != api.Degraded {
+		t.Fatalf("expected status=degraded, got %s", resp.Status)
+	}
+	if resp.Stale == nil || len(*resp.Stale) != 1 || (*resp.Stale)[0] != api.UsdtBinance {
+		t.Fatalf("expected stale=[usdt_binance], got %v", resp.Stale)
+	}
+}
+
+func TestGetRates_ProviderFailingIsStaleEvenIfRecent(t *testing.T) {
+	now := time.Now()
+	recent := now.Add(-1 * time.Minute)
+
+	st := state.NewState()
+	st.UpdateRates(state.StateRates{
+		UsdBcv:      state.RateData{Value: 480.0, LastUpdated: &recent},
+		EurBcv:      state.RateData{Value: 520.0, LastUpdated: &recent},
+		UsdtBinance: state.RateData{Value: 530.0, LastUpdated: &recent},
+	})
+	state.MarkBcvFailing(st)
+
+	srv := withFixedNow(st, now)
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/rates", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	var resp api.AllRates
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if !resp.UsdBcv.IsStale {
+		t.Fatal("expected UsdBcv.is_stale=true when provider is failing")
+	}
+	if !resp.EurBcv.IsStale {
+		t.Fatal("expected EurBcv.is_stale=true when provider is failing")
+	}
+	if resp.UsdtBinance.IsStale {
+		t.Fatal("expected UsdtBinance.is_stale=false (not failing)")
+	}
+}
+
