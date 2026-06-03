@@ -114,7 +114,7 @@
 
 ## Pillar 4: Persistence & Resilience
 
-### 4.1 — State as Cache + DB for Historical Data
+### 4.1 — State as Cache + DB for Historical Data (PostgreSQL)
 
 | | Details |
 |---|---|
@@ -219,7 +219,7 @@ Phase 6 — Persistence
 
 ## Pillar 6: Extend Test Coverage
 
-### 6.1 — Unit Tests for `State`
+### 6.1 — Unit Tests for `State` [DONE]
 
 | | Details |
 |---|---|
@@ -227,7 +227,7 @@ Phase 6 — Persistence
 | **Current state** | `State` has no tests. Its correctness is only verified indirectly through handler tests. |
 | **Rationale** | **(a)** `UpdateBcvPrice` and `UpdateBinancePrice` access fields by key from a `PriceResponse` map with no safety checks (marked with `FIXME`). A test that passes a malformed map would expose the nil/zero behavior. **(b)** Thread safety should be verified with `-race` flag — concurrent reads and writes to `State` must not cause data races. **(c)** These tests are cheap to write and provide a safety net before adding the DB layer (Pillar 4). |
 
-### 6.2 — Unit Tests for `Config`
+### 6.2 — Unit Tests for `Config` [DONE]
 
 | | Details |
 |---|---|
@@ -235,7 +235,7 @@ Phase 6 — Persistence
 | **Current state** | `LoadConfig` has no tests. If an env var is missing or has an unexpected format, the failure only surfaces at runtime when the server starts. |
 | **Rationale** | Config loading is a boundary — it reads from the environment, which is external input. Testing it ensures: **(a)** valid env vars are parsed correctly, **(b)** missing required vars  fail fast with a clear error, **(c)** invalid values (e.g., a non-numeric port) are caught. Tests can use `os.Setenv`/`os.Unsetenv` to control the environment. |
 
-### 6.3 — Negative/Boundary Values in Providers
+### 6.3 — Negative/Boundary Values in Providers [DONE]
 
 | | Details |
 |---|---|
