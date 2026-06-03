@@ -185,12 +185,12 @@ func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 	}
 
 	if validCount == 0 {
-		return nil, fmt.Errorf("Binance prices - no valid (positive, finite) prices found")
+		return nil, fmt.Errorf("binance prices - no valid (positive, finite) prices found")
 	}
 
 	avg := acc / float64(validCount)
 	if math.IsNaN(avg) || math.IsInf(avg, 0) {
-		return nil, fmt.Errorf("Binance prices - computed average is non-finite: %v", avg)
+		return nil, fmt.Errorf("binance prices - computed average is non-finite: %v", avg)
 	}
 
 	return rates.PriceResponse{"USDT_BINANCE": avg}, nil

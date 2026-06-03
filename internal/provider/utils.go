@@ -44,7 +44,7 @@ func fetchJson[T any](client HTTPDoer, req *http.Request) (T, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		errorBody, _ := io.ReadAll(resp.Body)
-		return result, fmt.Errorf("Failed to fetch json. Status code: %d - Error: %s", resp.StatusCode, string(errorBody))
+		return result, fmt.Errorf("failed to fetch json. Status code: %d - Error: %s", resp.StatusCode, string(errorBody))
 	}
 
 	// Write the response
