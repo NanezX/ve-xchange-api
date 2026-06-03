@@ -45,13 +45,13 @@ func main() {
 	// Initialise database store if DATABASE_URL is configured.
 	var dbStore db.Store
 	if appConfig.DatabaseURL != "" {
+		if err := db.RunMigrations(appConfig.DatabaseURL); err != nil {
+			slog.Error("failed to run migrations", "error", err)
+			os.Exit(1)
+		}
 		store, err := db.New(ctx, appConfig.DatabaseURL)
 		if err != nil {
 			slog.Error("failed to connect to database", "error", err)
-			os.Exit(1)
-		}
-		if err := store.CreateSchema(ctx); err != nil {
-			slog.Error("failed to create schema", "error", err)
 			os.Exit(1)
 		}
 		dbStore = store
