@@ -202,3 +202,79 @@ func TestConcurrentMixedWriters(t *testing.T) {
 
 	wg.Wait()
 }
+
+// --- ProviderFailing flag ---
+
+func TestMarkBcvFailingSetsFlag(t *testing.T) {
+	s := NewState()
+	MarkBcvFailing(s)
+
+	r := s.GetRates()
+	if !r.UsdBcv.ProviderFailing {
+		t.Fatal("expected UsdBcv.ProviderFailing=true")
+	}
+	if !r.EurBcv.ProviderFailing {
+		t.Fatal("expected EurBcv.ProviderFailing=true")
+	}
+	if r.UsdtBinance.ProviderFailing {
+		t.Fatal("expected UsdtBinance.ProviderFailing=false (unaffected)")
+	}
+}
+
+func TestClearBcvFailingClearsFlag(t *testing.T) {
+	s := NewState()
+	MarkBcvFailing(s)
+	ClearBcvFailing(s)
+
+	r := s.GetRates()
+	if r.UsdBcv.ProviderFailing || r.EurBcv.ProviderFailing {
+		t.Fatal("expected ProviderFailing=false after ClearBcvFailing")
+	}
+}
+
+func TestMarkBinanceFailingSetsFlag(t *testing.T) {
+	s := NewState()
+	MarkBinanceFailing(s)
+
+	r := s.GetRates()
+	if !r.UsdtBinance.ProviderFailing {
+		t.Fatal("expected UsdtBinance.ProviderFailing=true")
+	}
+	if r.UsdBcv.ProviderFailing || r.EurBcv.ProviderFailing {
+		t.Fatal("expected BCV flags unaffected by MarkBinanceFailing")
+	}
+}
+
+func TestClearBinanceFailingClearsFlag(t *testing.T) {
+	s := NewState()
+	MarkBinanceFailing(s)
+	ClearBinanceFailing(s)
+
+	r := s.GetRates()
+	if r.UsdtBinance.ProviderFailing {
+		t.Fatal("expected ProviderFailing=false after ClearBinanceFailing")
+	}
+}
+
+func TestConcurrentFailingFlagUpdates(t *testing.T) {
+	s := NewState()
+
+	const goroutines = 50
+	var wg sync.WaitGroup
+	wg.Add(goroutines * 2)
+
+	for i := 0; i < goroutines; i++ {
+		go func() {
+			defer wg.Done()
+			MarkBcvFailing(s)
+			ClearBcvFailing(s)
+		}()
+		go func() {
+			defer wg.Done()
+			_ = s.GetRates()
+		}()
+	}
+
+	wg.Wait()
+}
+
