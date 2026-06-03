@@ -1,11 +1,12 @@
 module github.com/nanezx/ve-xchange-api
 
-go 1.26.1
+go 1.25.7
 
 require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
 	github.com/oapi-codegen/runtime v1.4.1
+	github.com/pressly/goose/v3 v3.27.1
 	github.com/swaggest/swgui v1.8.7
 )
 
@@ -27,7 +28,6 @@ require (
 	github.com/oasdiff/yaml v0.0.9 // indirect
 	github.com/oasdiff/yaml3 v0.0.9 // indirect
 	github.com/perimeterx/marshmallow v1.1.5 // indirect
-	github.com/pressly/goose/v3 v3.27.1 // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/shurcooL/httpgzip v0.0.0-20190720172056-320755c1c1b0 // indirect
 	github.com/speakeasy-api/jsonpath v0.6.3 // indirect
