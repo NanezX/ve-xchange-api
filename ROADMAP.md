@@ -114,7 +114,7 @@
 
 ## Pillar 4: Persistence & Resilience
 
-### 4.1 — State as Cache + DB for Historical Data (PostgreSQL)
+### 4.1 — State as Cache + DB for Historical Data (PostgreSQL) [DONE]
 
 | | Details |
 |---|---|
@@ -204,9 +204,9 @@ Phase 5 — Resilience & Observability
   5.2  Structured logging with log/slog           [DONE]
   5.3  Consecutive failure counter                [DONE]
 
-Phase 6 — Persistence
-  4.1  State as cache + DB for historical data
-  7.4  /rates/{currency}/history endpoint (depends on 4.1)
+Phase 6 — Persistence                        [DONE]
+  4.1  State as cache + DB for historical data  [DONE]
+  7.4  /rates/{currency}/history endpoint       [DONE]
 ```
 
 > **Why this order?**
@@ -281,7 +281,7 @@ Phase 6 — Persistence
 | **Current state** | `/hello` returns a plain string with no semantic value. There is no way to query a single currency rate. All rates are returned in a single flat response. |
 | **Rationale** | **(a)** `GET /health` returns `200 OK` with `{ status: "ok" }` under normal conditions and `503 Service Unavailable` with stale currency details when any rate exceeds its staleness threshold (direct integration point for Pillar 5.1). This is the standard contract for load balancers, Kubernetes liveness/readiness probes, and uptime monitors. **(b)** `GET /rates/{currency}` accepts an enum path parameter (`usd_bcv`, `eur_bcv`, `usdt_binance`) and returns a single `RateEntry` object. This reduces payload size for consumers who only need one rate and enables per-currency caching at the HTTP layer in the future. `{currency}` as an enum is enforced both in the OpenAPI spec and validated in the generated handler stub. |
 
-### 7.4 — Historical Data Endpoint: `GET /rates/{currency}/history`
+### 7.4 — Historical Data Endpoint: `GET /rates/{currency}/history` [DONE]
 
 | | Details |
 |---|---|
