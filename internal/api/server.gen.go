@@ -6,6 +6,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -77,12 +78,33 @@ type Health struct {
 // HealthStatus defines model for Health.Status.
 type HealthStatus string
 
+// HistoryEntry defines model for HistoryEntry.
+type HistoryEntry struct {
+	RecordedAt time.Time `json:"recorded_at"`
+	Value      float64   `json:"value"`
+}
+
 // RateEntry defines model for RateEntry.
 type RateEntry struct {
 	DataAgeSeconds int        `json:"data_age_seconds"`
 	IsStale        bool       `json:"is_stale"`
 	LastUpdated    *time.Time `json:"last_updated"`
 	Value          float64    `json:"value"`
+}
+
+// RateHistory defines model for RateHistory.
+type RateHistory struct {
+	Currency Currency       `json:"currency"`
+	Entries  []HistoryEntry `json:"entries"`
+}
+
+// GetRatesCurrencyHistoryParams defines parameters for GetRatesCurrencyHistory.
+type GetRatesCurrencyHistoryParams struct {
+	// FromDate Start date (inclusive) in YYYY-MM-DD format
+	FromDate string `form:"fromDate" json:"fromDate"`
+
+	// ToDate End date (inclusive) in YYYY-MM-DD format
+	ToDate string `form:"toDate" json:"toDate"`
 }
 
 // ServerInterface represents all server handlers.
@@ -96,6 +118,9 @@ type ServerInterface interface {
 
 	// (GET /rates/{currency})
 	GetRatesCurrency(w http.ResponseWriter, r *http.Request, currency Currency)
+
+	// (GET /rates/{currency}/history)
+	GetRatesCurrencyHistory(w http.ResponseWriter, r *http.Request, currency Currency, params GetRatesCurrencyHistoryParams)
 }
 
 // ServerInterfaceWrapper converts contexts to parameters.
@@ -152,6 +177,61 @@ func (siw *ServerInterfaceWrapper) GetRatesCurrency(w http.ResponseWriter, r *ht
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetRatesCurrency(w, r, currency)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetRatesCurrencyHistory operation middleware
+func (siw *ServerInterfaceWrapper) GetRatesCurrencyHistory(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "currency" -------------
+	var currency Currency
+
+	err = runtime.BindStyledParameterWithOptions("simple", "currency", r.PathValue("currency"), &currency, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "currency", Err: err})
+		return
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetRatesCurrencyHistoryParams
+
+	// ------------- Required query parameter "fromDate" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "fromDate", r.URL.Query(), &params.FromDate, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "fromDate"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "fromDate", Err: err})
+		}
+		return
+	}
+
+	// ------------- Required query parameter "toDate" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "toDate", r.URL.Query(), &params.ToDate, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		var requiredError *runtime.RequiredParameterError
+		if errors.As(err, &requiredError) {
+			siw.ErrorHandlerFunc(w, r, &RequiredParamError{ParamName: "toDate"})
+		} else {
+			siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "toDate", Err: err})
+		}
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetRatesCurrencyHistory(w, r, currency, params)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -284,6 +364,7 @@ func HandlerWithOptions(si ServerInterface, options StdHTTPServerOptions) http.H
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/health", wrapper.GetHealth)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/rates", wrapper.GetRates)
 	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/rates/{currency}", wrapper.GetRatesCurrency)
+	m.HandleFunc(http.MethodGet+" "+options.BaseURL+"/rates/{currency}/history", wrapper.GetRatesCurrencyHistory)
 
 	return m
 }

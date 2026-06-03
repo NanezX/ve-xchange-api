@@ -30,6 +30,54 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AllRates'
+  /rates/{currency}/history:
+    get:
+      operationId: GetRatesCurrencyHistory
+      parameters:
+        - name: currency
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Currency'
+        - name: fromDate
+          in: query
+          required: true
+          description: Start date (inclusive) in YYYY-MM-DD format
+          schema:
+            type: string
+            example: "2026-01-01"
+        - name: toDate
+          in: query
+          required: true
+          description: End date (inclusive) in YYYY-MM-DD format
+          schema:
+            type: string
+            example: "2026-12-31"
+      responses:
+        '200':
+          description: "Historical price entries for the requested currency and date range"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RateHistory'
+        '400':
+          description: "Invalid or missing query parameters"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: "Unknown currency"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: "History unavailable (database not configured)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /rates/{currency}:
     get:
       operationId: GetRatesCurrency
@@ -100,6 +148,27 @@ components:
           $ref: '#/components/schemas/RateEntry'
         usdt_binance:
           $ref: '#/components/schemas/RateEntry'
+    HistoryEntry:
+      type: object
+      required: [recorded_at, value]
+      properties:
+        recorded_at:
+          type: string
+          format: date-time
+        value:
+          type: number
+          format: double
+          example: 570.11
+    RateHistory:
+      type: object
+      required: [currency, entries]
+      properties:
+        currency:
+          $ref: '#/components/schemas/Currency'
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistoryEntry'
     Error:
       type: object
       required: [error]
