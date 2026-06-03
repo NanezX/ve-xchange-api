@@ -2,11 +2,18 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"embed"
 	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 )
+
+//go:embed migrations/*.sql
+var migrationFiles embed.FS
 
 // HistoryEntry is a single price observation row returned from the DB.
 type HistoryEntry struct {
@@ -47,21 +54,22 @@ func New(ctx context.Context, connString string) (*DBStore, error) {
 	return &DBStore{pool: pool}, nil
 }
 
-// CreateSchema creates the prices_history table and its index if they do not
-// already exist. Safe to call on every startup.
-func (d *DBStore) CreateSchema(ctx context.Context) error {
-	_, err := d.pool.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS prices_history (
-			id          BIGSERIAL PRIMARY KEY,
-			currency    TEXT              NOT NULL,
-			value       DOUBLE PRECISION  NOT NULL,
-			recorded_at TIMESTAMPTZ       NOT NULL
-		);
-		CREATE INDEX IF NOT EXISTS idx_prices_history_currency_at
-			ON prices_history (currency, recorded_at);
-	`)
+// RunMigrations applies all pending goose migrations against connString.
+// Safe to call on every startup — goose tracks applied versions in the
+// schema_migrations table and is a no-op when already up-to-date.
+func RunMigrations(connString string) error {
+	db, err := sql.Open("pgx", connString)
 	if err != nil {
-		return fmt.Errorf("db.CreateSchema: %w", err)
+		return fmt.Errorf("db.RunMigrations open: %w", err)
+	}
+	defer db.Close()
+
+	goose.SetBaseFS(migrationFiles)
+	if err := goose.SetDialect("postgres"); err != nil {
+		return fmt.Errorf("db.RunMigrations dialect: %w", err)
+	}
+	if err := goose.Up(db, "migrations"); err != nil {
+		return fmt.Errorf("db.RunMigrations: %w", err)
 	}
 	return nil
 }
