@@ -2,6 +2,7 @@ package provider
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"time"
 
@@ -64,6 +65,12 @@ func (p *DolarApiProvider) GetPrices() (rates.PriceResponse, error) {
 
 	if resp["USD_BCV"] <= 0 || resp["EUR_BCV"] <= 0 {
 		return nil, fmt.Errorf("DolarAPI prices - invalid rates: USD=%.2f, EUR=%.2f (must be > 0)",
+			resp["USD_BCV"], resp["EUR_BCV"])
+	}
+
+	if math.IsNaN(resp["USD_BCV"]) || math.IsNaN(resp["EUR_BCV"]) ||
+		math.IsInf(resp["USD_BCV"], 0) || math.IsInf(resp["EUR_BCV"], 0) {
+		return nil, fmt.Errorf("DolarAPI prices - non-finite rates: USD=%v, EUR=%v",
 			resp["USD_BCV"], resp["EUR_BCV"])
 	}
 
