@@ -16,8 +16,9 @@ const (
 )
 
 type RateData struct {
-	Value       float64
-	LastUpdated *time.Time
+	Value           float64
+	LastUpdated     *time.Time
+	ProviderFailing bool
 }
 
 type StateRates struct {
@@ -48,7 +49,37 @@ func (s *State) GetRates() StateRates {
 	return s.rates
 }
 
-// UpdateBcvPrice writes USD/EUR BCV values from a provider response.
+// MarkBcvFailing marks BCV rates (USD and EUR) as coming from a failing
+// provider. The handler will report them as stale regardless of timestamp.
+func MarkBcvFailing(s *State) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rates.UsdBcv.ProviderFailing = true
+	s.rates.EurBcv.ProviderFailing = true
+}
+
+// ClearBcvFailing clears the failing flag for BCV rates.
+func ClearBcvFailing(s *State) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rates.UsdBcv.ProviderFailing = false
+	s.rates.EurBcv.ProviderFailing = false
+}
+
+// MarkBinanceFailing marks the Binance rate as coming from a failing provider.
+func MarkBinanceFailing(s *State) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rates.UsdtBinance.ProviderFailing = true
+}
+
+// ClearBinanceFailing clears the failing flag for the Binance rate.
+func ClearBinanceFailing(s *State) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.rates.UsdtBinance.ProviderFailing = false
+}
+
 // Missing keys are skipped (previous value preserved) so a partial provider
 // failure cannot silently overwrite valid data with zeros.
 func UpdateBcvPrice(state *State, data rates.PriceResponse) {
