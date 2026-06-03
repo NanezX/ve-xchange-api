@@ -1,0 +1,32 @@
+services:
+  api:
+    build: .
+    ports:
+      - '8080:8080'
+    environment:
+      APP_PORT: 8080
+      DATABASE_URL: postgresql://vexchange:vexchange@postgres:5432/vexchange_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vexchange
+      POSTGRES_PASSWORD: vexchange
+      POSTGRES_DB: vexchange_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U vexchange -d vexchange_db']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '5432:5432'
+
+volumes:
+  postgres_data:
