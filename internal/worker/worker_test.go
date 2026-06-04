@@ -170,6 +170,82 @@ func TestWorkerOnFailCalledAfterThreeConsecutiveFailures(t *testing.T) {
 	wg.Wait()
 }
 
+func TestWorkerDailyAt_RetriesOnFailure(t *testing.T) {
+	// Provider fails on the initial startup fetch. Apply must NOT fire yet.
+	// We verify the startup fetch ran and Apply was not triggered.
+	applyCh := make(chan struct{}, 1)
+	callCount := 0
+
+	prov := &mockSequenceProvider{
+		count: &callCount,
+		responses: func(n int) (rates.PriceResponse, error) {
+			if n < 2 {
+				return nil, errors.New("temporary failure")
+			}
+			return rates.PriceResponse{"USD": 1.0}, nil
+		},
+	}
+
+	job := ProviderJob{
+		Provider: prov,
+		DailyAt:  &TimeOfDay{Hour: 0, Minute: 0, Location: time.UTC},
+		Apply:    func(rates.PriceResponse) { applyCh <- struct{}{} },
+		OnFail:   func(int64) {},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	_ = StartPriceWorker(ctx, []ProviderJob{job})
+
+	time.Sleep(50 * time.Millisecond)
+	prov.mu.Lock()
+	c := callCount
+	prov.mu.Unlock()
+	if c < 1 {
+		t.Fatal("expected at least one fetch call at startup")
+	}
+
+	// Apply must NOT have fired — provider is still failing on first 2 calls.
+	select {
+	case <-applyCh:
+		t.Fatal("Apply fired before provider recovered")
+	default:
+	}
+}
+
+func TestWorkerDailyAt_StopsRetryingAfter10Attempts(t *testing.T) {
+	// All fetches fail. Apply must never be called.
+	applyCh := make(chan struct{}, 1)
+	callCount := 0
+
+	prov := &mockSequenceProvider{
+		count: &callCount,
+		responses: func(n int) (rates.PriceResponse, error) {
+			return nil, errors.New("always fails")
+		},
+	}
+
+	job := ProviderJob{
+		Provider: prov,
+		DailyAt:  &TimeOfDay{Hour: 0, Minute: 0, Location: time.UTC},
+		Apply:    func(rates.PriceResponse) { applyCh <- struct{}{} },
+		OnFail:   func(int64) {},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	_ = StartPriceWorker(ctx, []ProviderJob{job})
+	<-ctx.Done()
+
+	select {
+	case <-applyCh:
+		t.Fatal("Apply should never fire when provider always fails")
+	default:
+	}
+}
+
 func TestWorkerOnRecoverCalledAfterStreak(t *testing.T) {
 	const failCount = 3
 

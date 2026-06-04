@@ -116,6 +116,23 @@ func StartPriceWorker(ctx context.Context, jobs []ProviderJob) *sync.WaitGroup {
 						return
 					case <-timer.C:
 						fetch()
+						// On failure, retry every 30 min up to 10 times before
+						// giving up until the next daily window.
+						for retries := 0; retries < 10 && consecutiveFails > 0; retries++ {
+							slog.Warn("daily fetch failed, retrying",
+								"provider", currentJob.Provider.GetName(),
+								"retry", retries+1,
+								"max_retries", 10,
+								"next_retry_in", "30m")
+							retryTimer := time.NewTimer(30 * time.Minute)
+							select {
+							case <-ctx.Done():
+								retryTimer.Stop()
+								return
+							case <-retryTimer.C:
+								fetch()
+							}
+						}
 					}
 				}
 			}
