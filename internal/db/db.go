@@ -19,6 +19,7 @@ var migrationFiles embed.FS
 type HistoryEntry struct {
 	Value      float64
 	RecordedAt time.Time
+	IsAverage  bool
 }
 
 // Store is the interface for all database operations used by this service.
@@ -34,6 +35,13 @@ type Store interface {
 	// GetLatestRates returns the most recent observation for every currency
 	// that has at least one row. Keys are the currency string (e.g. "usd_bcv").
 	GetLatestRates(ctx context.Context) (map[string]HistoryEntry, error)
+
+	// ConsolidateDay computes the average of all raw (is_average=false)
+	// observations for currency in [from, to), stores a single summary row
+	// (is_average=true, recorded_at=from), and deletes the raw rows.
+	// It is a no-op if no raw observations exist in the window.
+	// The operation is atomic and idempotent.
+	ConsolidateDay(ctx context.Context, currency string, from, to time.Time) error
 
 	// Close releases the underlying connection pool.
 	Close()
@@ -122,7 +130,7 @@ func (d *DBStore) GetLatestRates(ctx context.Context) (map[string]HistoryEntry, 
 // recorded_at >= from AND recorded_at < to, ordered ascending.
 func (d *DBStore) GetHistory(ctx context.Context, currency string, from, to time.Time) ([]HistoryEntry, error) {
 	rows, err := d.pool.Query(ctx,
-		`SELECT value, recorded_at
+		`SELECT value, recorded_at, is_average
 		   FROM prices_history
 		  WHERE currency = $1
 		    AND recorded_at >= $2
@@ -138,7 +146,7 @@ func (d *DBStore) GetHistory(ctx context.Context, currency string, from, to time
 	var entries []HistoryEntry
 	for rows.Next() {
 		var e HistoryEntry
-		if err := rows.Scan(&e.Value, &e.RecordedAt); err != nil {
+		if err := rows.Scan(&e.Value, &e.RecordedAt, &e.IsAverage); err != nil {
 			return nil, fmt.Errorf("db.GetHistory scan: %w", err)
 		}
 		entries = append(entries, e)
@@ -147,6 +155,66 @@ func (d *DBStore) GetHistory(ctx context.Context, currency string, from, to time
 		return nil, fmt.Errorf("db.GetHistory rows: %w", err)
 	}
 	return entries, nil
+}
+
+// ConsolidateDay replaces all raw observations for currency in [from, to) with
+// a single average row. The operation runs inside a transaction and is
+// idempotent: calling it twice for the same window yields the same result.
+func (d *DBStore) ConsolidateDay(ctx context.Context, currency string, from, to time.Time) error {
+	tx, err := d.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("db.ConsolidateDay begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Compute average of raw rows.
+	var avg *float64
+	if err := tx.QueryRow(ctx,
+		`SELECT AVG(value) FROM prices_history
+		  WHERE currency = $1 AND recorded_at >= $2 AND recorded_at < $3
+		    AND is_average = false`,
+		currency, from, to,
+	).Scan(&avg); err != nil {
+		return fmt.Errorf("db.ConsolidateDay avg: %w", err)
+	}
+	if avg == nil {
+		// Nothing to consolidate.
+		return tx.Commit(ctx)
+	}
+
+	// Delete raw rows for the window.
+	if _, err := tx.Exec(ctx,
+		`DELETE FROM prices_history
+		  WHERE currency = $1 AND recorded_at >= $2 AND recorded_at < $3
+		    AND is_average = false`,
+		currency, from, to,
+	); err != nil {
+		return fmt.Errorf("db.ConsolidateDay delete raw: %w", err)
+	}
+
+	// Remove any previously consolidated row for idempotency.
+	if _, err := tx.Exec(ctx,
+		`DELETE FROM prices_history
+		  WHERE currency = $1 AND recorded_at >= $2 AND recorded_at < $3
+		    AND is_average = true`,
+		currency, from, to,
+	); err != nil {
+		return fmt.Errorf("db.ConsolidateDay delete prev avg: %w", err)
+	}
+
+	// Insert the consolidated row (recorded_at = start of window = midnight).
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO prices_history (currency, value, recorded_at, is_average)
+		 VALUES ($1, $2, $3, true)`,
+		currency, *avg, from,
+	); err != nil {
+		return fmt.Errorf("db.ConsolidateDay insert: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("db.ConsolidateDay commit: %w", err)
+	}
+	return nil
 }
 
 // Close releases the connection pool.
