@@ -153,3 +153,46 @@ func StartPriceWorker(ctx context.Context, jobs []ProviderJob) *sync.WaitGroup {
 
 	return &wg
 }
+
+// TaskJob is a scheduled background task that does not fetch from an external
+// provider (e.g. a nightly DB consolidation). It fires once per day at DailyAt.
+// Unlike ProviderJob, there is no initial execution at startup.
+type TaskJob struct {
+	// Name is used in log messages.
+	Name string
+	// DailyAt schedules the task at a fixed wall-clock time each day.
+	DailyAt TimeOfDay
+	// Run is called at each scheduled occurrence. The context is cancelled
+	// when the worker is shutting down.
+	Run func(ctx context.Context)
+}
+
+// StartTaskWorker launches one goroutine per job and returns a WaitGroup that
+// completes once all goroutines have exited.
+func StartTaskWorker(ctx context.Context, jobs []TaskJob) *sync.WaitGroup {
+	var wg sync.WaitGroup
+
+	for _, job := range jobs {
+		j := job
+		wg.Add(1)
+
+		go func() {
+			defer wg.Done()
+
+			for {
+				timer := time.NewTimer(nextDaily(j.DailyAt, time.Now()))
+				select {
+				case <-ctx.Done():
+					timer.Stop()
+					return
+				case <-timer.C:
+					slog.Info("running scheduled task", "task", j.Name)
+					j.Run(ctx)
+					slog.Info("scheduled task completed", "task", j.Name)
+				}
+			}
+		}()
+	}
+
+	return &wg
+}
