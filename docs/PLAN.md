@@ -6,6 +6,16 @@ Technical roadmap for what comes next: pending tech debt and planned features.
 
 ## Tech Debt
 
+### TD-0 — BCV Daily Scheduler ✅ (done)
+
+**Problem:** BCV publishes the next day's rate at 5-6 PM. A 6-hour polling interval would apply tomorrow's rate during the current day, serving incorrect data.
+
+**Solution:** Replaced the `Every: 6h` ticker with a `DailyAt` field on `ProviderJob`. The BCV job fires once daily at 00:05 AM UTC-4, ensuring the newly published rate is now the valid rate for the current day.
+
+**Implementation:** `internal/worker/worker.go` — `TimeOfDay` struct, `nextDaily()` pure function, daily `time.NewTimer` loop. Binance job is unchanged (`Every: 5min`).
+
+---
+
 ### TD-1 — Warm Cache on Startup ✅ (done)
 
 **Problem:** On startup `AppState` is zero-valued. Any request to `/rates` before the first worker tick returns empty/zero data. For Binance the wait is up to 5 minutes; for BCV up to 6 hours.

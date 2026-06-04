@@ -170,6 +170,82 @@ func TestWorkerOnFailCalledAfterThreeConsecutiveFailures(t *testing.T) {
 	wg.Wait()
 }
 
+func TestWorkerDailyAt_RetriesOnFailure(t *testing.T) {
+	// Provider fails on the initial startup fetch. Apply must NOT fire yet.
+	// We verify the startup fetch ran and Apply was not triggered.
+	applyCh := make(chan struct{}, 1)
+	callCount := 0
+
+	prov := &mockSequenceProvider{
+		count: &callCount,
+		responses: func(n int) (rates.PriceResponse, error) {
+			if n < 2 {
+				return nil, errors.New("temporary failure")
+			}
+			return rates.PriceResponse{"USD": 1.0}, nil
+		},
+	}
+
+	job := ProviderJob{
+		Provider: prov,
+		DailyAt:  &TimeOfDay{Hour: 0, Minute: 0, Location: time.UTC},
+		Apply:    func(rates.PriceResponse) { applyCh <- struct{}{} },
+		OnFail:   func(int64) {},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	_ = StartPriceWorker(ctx, []ProviderJob{job})
+
+	time.Sleep(50 * time.Millisecond)
+	prov.mu.Lock()
+	c := callCount
+	prov.mu.Unlock()
+	if c < 1 {
+		t.Fatal("expected at least one fetch call at startup")
+	}
+
+	// Apply must NOT have fired — provider is still failing on first 2 calls.
+	select {
+	case <-applyCh:
+		t.Fatal("Apply fired before provider recovered")
+	default:
+	}
+}
+
+func TestWorkerDailyAt_StopsRetryingAfter10Attempts(t *testing.T) {
+	// All fetches fail. Apply must never be called.
+	applyCh := make(chan struct{}, 1)
+	callCount := 0
+
+	prov := &mockSequenceProvider{
+		count: &callCount,
+		responses: func(n int) (rates.PriceResponse, error) {
+			return nil, errors.New("always fails")
+		},
+	}
+
+	job := ProviderJob{
+		Provider: prov,
+		DailyAt:  &TimeOfDay{Hour: 0, Minute: 0, Location: time.UTC},
+		Apply:    func(rates.PriceResponse) { applyCh <- struct{}{} },
+		OnFail:   func(int64) {},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+
+	_ = StartPriceWorker(ctx, []ProviderJob{job})
+	<-ctx.Done()
+
+	select {
+	case <-applyCh:
+		t.Fatal("Apply should never fire when provider always fails")
+	default:
+	}
+}
+
 func TestWorkerOnRecoverCalledAfterStreak(t *testing.T) {
 	const failCount = 3
 
@@ -226,3 +302,88 @@ func (m *mockSequenceProvider) GetPrices() (rates.PriceResponse, error) {
 }
 
 func (m *mockSequenceProvider) GetName() string { return "mockSequence" }
+
+// --- nextDaily ---
+
+func TestNextDaily_BeforeTargetToday(t *testing.T) {
+	loc := time.UTC
+	tod := TimeOfDay{Hour: 0, Minute: 5, Location: loc}
+
+	// now = 23:00 the day before — target (00:05) is still in the future today
+	// Wait: 00:05 is earlier than 23:00, so next occurrence is tomorrow 00:05.
+	now := time.Date(2026, 6, 4, 23, 0, 0, 0, loc)
+	d := nextDaily(tod, now)
+
+	// Expected: ~65 minutes
+	expected := 65 * time.Minute
+	if d < 60*time.Minute || d > 70*time.Minute {
+		t.Fatalf("expected ~65min, got %v (expected ~%v)", d, expected)
+	}
+}
+
+func TestNextDaily_AfterTargetToday(t *testing.T) {
+	loc := time.UTC
+	tod := TimeOfDay{Hour: 0, Minute: 5, Location: loc}
+
+	// now = 01:00 — target (00:05) already passed today, next is tomorrow
+	now := time.Date(2026, 6, 4, 1, 0, 0, 0, loc)
+	d := nextDaily(tod, now)
+
+	// Expected: ~23h05m
+	if d < 23*time.Hour || d > 24*time.Hour {
+		t.Fatalf("expected ~23h, got %v", d)
+	}
+}
+
+func TestNextDaily_ExactlyAtTarget_SchedulesTomorrow(t *testing.T) {
+	loc := time.UTC
+	tod := TimeOfDay{Hour: 0, Minute: 5, Location: loc}
+
+	// now == target exactly → must schedule for tomorrow (not fire immediately)
+	now := time.Date(2026, 6, 4, 0, 5, 0, 0, loc)
+	d := nextDaily(tod, now)
+
+	if d < 23*time.Hour || d > 24*time.Hour {
+		t.Fatalf("expected ~24h when now==target, got %v", d)
+	}
+}
+
+func TestNextDaily_DifferentTimezone(t *testing.T) {
+	utcMinus4 := time.FixedZone("UTC-4", -4*60*60)
+	tod := TimeOfDay{Hour: 0, Minute: 5, Location: utcMinus4}
+
+	// 00:05 UTC-4 = 04:05 UTC
+	// now = 03:00 UTC (= 23:00 UTC-4 the day before) — target is 65 min away
+	now := time.Date(2026, 6, 4, 3, 0, 0, 0, time.UTC)
+	d := nextDaily(tod, now)
+
+	if d < 60*time.Minute || d > 70*time.Minute {
+		t.Fatalf("expected ~65min across timezone, got %v", d)
+	}
+}
+
+func TestWorkerDailyAt_InitialFetchRunsImmediately(t *testing.T) {
+	// DailyAt is set — the initial fetch must still run at startup (before the
+	// first daily timer fires).
+	provider := &MockProvider{prices: rates.PriceResponse{"USD": 1.0}}
+	calls := make(chan struct{}, 1)
+
+	loc := time.UTC
+	job := ProviderJob{
+		Provider: provider,
+		DailyAt:  &TimeOfDay{Hour: 0, Minute: 5, Location: loc},
+		Apply:    func(rates.PriceResponse) { calls <- struct{}{} },
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
+
+	select {
+	case <-calls:
+	case <-time.After(time.Second):
+		t.Fatal("initial fetch did not fire for DailyAt job")
+	}
+
+	cancel()
+	wg.Wait()
+}

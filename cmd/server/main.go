@@ -76,12 +76,17 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Venezuela is UTC-4 (no DST).
+	utcMinus4 := time.FixedZone("UTC-4", -4*60*60)
+
 	// Add provider to lists
 	providerJobs := []worker.ProviderJob{
-		// DolarAPI
+		// DolarAPI — BCV publishes tomorrow's rate at 5-6 PM each day.
+		// We fetch at 00:05 AM UTC-4 so we always apply the rate that is
+		// currently valid for today, never tomorrow's rate ahead of time.
 		{
 			Provider: provider.NewDolarDolarApiProvider(client),
-			Every:    6 * time.Hour,
+			DailyAt:  &worker.TimeOfDay{Hour: 0, Minute: 5, Location: utcMinus4},
 			Apply: func(pr rates.PriceResponse) {
 				state.UpdateBcvPrice(appState, pr)
 				if dbStore != nil {
