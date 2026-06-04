@@ -14,16 +14,47 @@ type PriceProvider interface {
 	GetName() string
 }
 
+// TimeOfDay represents a wall-clock time in a specific timezone.
+// Used to schedule a provider job at a fixed time each day.
+type TimeOfDay struct {
+	Hour     int
+	Minute   int
+	Location *time.Location // nil means UTC
+}
+
 type ProviderJob struct {
 	Provider PriceProvider
-	Every    time.Duration
-	Apply    func(rates.PriceResponse)
+	// Every drives an interval-based schedule (e.g. every 5 min for Binance).
+	// Mutually exclusive with DailyAt.
+	Every time.Duration
+	// DailyAt drives a once-per-day schedule at a fixed wall-clock time.
+	// When set, Every is ignored. An initial fetch still runs at startup.
+	// Mutually exclusive with Every.
+	DailyAt *TimeOfDay
+	Apply   func(rates.PriceResponse)
 	// OnFail is called on every fetch failure once consecutiveFails reaches 3.
 	// Useful for marking provider state as degraded. Optional.
 	OnFail func(consecutiveFails int64)
 	// OnRecover is called on the first successful fetch after a streak of ≥3
 	// failures. Useful for clearing the degraded flag. Optional.
 	OnRecover func()
+}
+
+// nextDaily returns the duration until the next occurrence of tod after now.
+// If the target time today has already passed (or equals now), the next
+// occurrence is scheduled for tomorrow.
+func nextDaily(tod TimeOfDay, now time.Time) time.Duration {
+	loc := tod.Location
+	if loc == nil {
+		loc = time.UTC
+	}
+	nowInLoc := now.In(loc)
+	candidate := time.Date(nowInLoc.Year(), nowInLoc.Month(), nowInLoc.Day(),
+		tod.Hour, tod.Minute, 0, 0, loc)
+	if !candidate.After(nowInLoc) {
+		candidate = candidate.AddDate(0, 0, 1)
+	}
+	return candidate.Sub(now)
 }
 
 // StartPriceWorker launches one goroutine per job. Each goroutine performs an
@@ -75,6 +106,19 @@ func StartPriceWorker(ctx context.Context, jobs []ProviderJob) *sync.WaitGroup {
 			}
 
 			fetch()
+
+			if currentJob.DailyAt != nil {
+				for {
+					timer := time.NewTimer(nextDaily(*currentJob.DailyAt, time.Now()))
+					select {
+					case <-ctx.Done():
+						timer.Stop()
+						return
+					case <-timer.C:
+						fetch()
+					}
+				}
+			}
 
 			ticker := time.NewTicker(currentJob.Every)
 			defer ticker.Stop()
