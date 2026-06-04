@@ -277,3 +277,79 @@ func TestConcurrentFailingFlagUpdates(t *testing.T) {
 
 	wg.Wait()
 }
+
+// --- WarmUp ---
+
+func TestWarmUpSetsAllCurrencies(t *testing.T) {
+	s := NewState()
+	ts := time.Date(2026, 1, 15, 12, 0, 0, 0, time.UTC)
+
+	WarmUp(s, map[string]WarmEntry{
+		KeyUsdBcv:      {Value: 480.5, RecordedAt: ts},
+		KeyEurBcv:      {Value: 520.0, RecordedAt: ts},
+		KeyUsdtBinance: {Value: 530.1, RecordedAt: ts},
+	})
+
+	r := s.GetRates()
+	if r.UsdBcv.Value != 480.5 {
+		t.Fatalf("expected UsdBcv=480.5, got %f", r.UsdBcv.Value)
+	}
+	if r.EurBcv.Value != 520.0 {
+		t.Fatalf("expected EurBcv=520.0, got %f", r.EurBcv.Value)
+	}
+	if r.UsdtBinance.Value != 530.1 {
+		t.Fatalf("expected UsdtBinance=530.1, got %f", r.UsdtBinance.Value)
+	}
+	if r.UsdBcv.LastUpdated == nil || !r.UsdBcv.LastUpdated.Equal(ts) {
+		t.Fatalf("expected UsdBcv.LastUpdated=%v, got %v", ts, r.UsdBcv.LastUpdated)
+	}
+}
+
+func TestWarmUpPartialMapOnlyUpdatesPresent(t *testing.T) {
+	s := NewState()
+	ts := time.Now()
+
+	// Pre-set a known Binance value.
+	binanceTs := ts.Add(-1 * time.Minute)
+	WarmUp(s, map[string]WarmEntry{
+		KeyUsdtBinance: {Value: 99.9, RecordedAt: binanceTs},
+	})
+
+	// Now warm up only BCV — Binance should stay untouched.
+	WarmUp(s, map[string]WarmEntry{
+		KeyUsdBcv: {Value: 480.0, RecordedAt: ts},
+		KeyEurBcv: {Value: 520.0, RecordedAt: ts},
+	})
+
+	r := s.GetRates()
+	if r.UsdBcv.Value != 480.0 {
+		t.Fatalf("expected UsdBcv=480.0, got %f", r.UsdBcv.Value)
+	}
+	if r.UsdtBinance.Value != 99.9 {
+		t.Fatalf("expected UsdtBinance unchanged=99.9, got %f", r.UsdtBinance.Value)
+	}
+}
+
+func TestWarmUpEmptyMapIsNoop(t *testing.T) {
+	s := NewState()
+	WarmUp(s, map[string]WarmEntry{})
+
+	r := s.GetRates()
+	if r.UsdBcv.Value != 0 || r.UsdBcv.LastUpdated != nil {
+		t.Fatal("expected zero state after empty WarmUp")
+	}
+}
+
+func TestWarmUpDoesNotSetProviderFailing(t *testing.T) {
+	s := NewState()
+	ts := time.Now()
+
+	WarmUp(s, map[string]WarmEntry{
+		KeyUsdBcv: {Value: 480.0, RecordedAt: ts},
+	})
+
+	r := s.GetRates()
+	if r.UsdBcv.ProviderFailing {
+		t.Fatal("WarmUp must not set ProviderFailing")
+	}
+}

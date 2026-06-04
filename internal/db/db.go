@@ -31,6 +31,10 @@ type Store interface {
 	// GetHistory returns all observations for currency in [from, to).
 	GetHistory(ctx context.Context, currency string, from, to time.Time) ([]HistoryEntry, error)
 
+	// GetLatestRates returns the most recent observation for every currency
+	// that has at least one row. Keys are the currency string (e.g. "usd_bcv").
+	GetLatestRates(ctx context.Context) (map[string]HistoryEntry, error)
+
 	// Close releases the underlying connection pool.
 	Close()
 }
@@ -84,6 +88,34 @@ func (d *DBStore) InsertRate(ctx context.Context, currency string, value float64
 		return fmt.Errorf("db.InsertRate: %w", err)
 	}
 	return nil
+}
+
+// GetLatestRates returns the most recent observation for every currency
+// stored in prices_history. The map key is the currency string.
+func (d *DBStore) GetLatestRates(ctx context.Context) (map[string]HistoryEntry, error) {
+	rows, err := d.pool.Query(ctx,
+		`SELECT DISTINCT ON (currency) currency, value, recorded_at
+		   FROM prices_history
+		  ORDER BY currency, recorded_at DESC`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("db.GetLatestRates query: %w", err)
+	}
+	defer rows.Close()
+
+	result := make(map[string]HistoryEntry)
+	for rows.Next() {
+		var currency string
+		var e HistoryEntry
+		if err := rows.Scan(&currency, &e.Value, &e.RecordedAt); err != nil {
+			return nil, fmt.Errorf("db.GetLatestRates scan: %w", err)
+		}
+		result[currency] = e
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("db.GetLatestRates rows: %w", err)
+	}
+	return result, nil
 }
 
 // GetHistory returns all price observations for currency where

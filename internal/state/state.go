@@ -80,6 +80,37 @@ func ClearBinanceFailing(s *State) {
 	s.rates.UsdtBinance.ProviderFailing = false
 }
 
+// WarmEntry is a single pre-loaded rate value used to warm the in-memory cache.
+type WarmEntry struct {
+	Value      float64
+	RecordedAt time.Time
+}
+
+// WarmUp pre-loads the in-memory cache from persisted values so the API
+// can serve correct data immediately after a restart, without waiting for
+// the first provider tick. Only currencies present in the map are updated;
+// missing keys are left at their zero value.
+func WarmUp(s *State, entries map[string]WarmEntry) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if e, ok := entries[KeyUsdBcv]; ok {
+		t := e.RecordedAt
+		s.rates.UsdBcv.Value = e.Value
+		s.rates.UsdBcv.LastUpdated = &t
+	}
+	if e, ok := entries[KeyEurBcv]; ok {
+		t := e.RecordedAt
+		s.rates.EurBcv.Value = e.Value
+		s.rates.EurBcv.LastUpdated = &t
+	}
+	if e, ok := entries[KeyUsdtBinance]; ok {
+		t := e.RecordedAt
+		s.rates.UsdtBinance.Value = e.Value
+		s.rates.UsdtBinance.LastUpdated = &t
+	}
+}
+
 // Missing keys are skipped (previous value preserved) so a partial provider
 // failure cannot silently overwrite valid data with zeros.
 func UpdateBcvPrice(state *State, data rates.PriceResponse) {

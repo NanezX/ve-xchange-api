@@ -57,6 +57,20 @@ func main() {
 		dbStore = store
 		defer dbStore.Close()
 		slog.Info("database connected")
+
+		// Pre-load the in-memory cache from the latest persisted values so the
+		// API serves correct data immediately after a restart.
+		latest, err := dbStore.GetLatestRates(ctx)
+		if err != nil {
+			slog.Warn("warm-up query failed, starting with empty cache", "error", err)
+		} else if len(latest) > 0 {
+			warm := make(map[string]state.WarmEntry, len(latest))
+			for currency, entry := range latest {
+				warm[currency] = state.WarmEntry{Value: entry.Value, RecordedAt: entry.RecordedAt}
+			}
+			state.WarmUp(appState, warm)
+			slog.Info("cache warmed up from database", "currencies", len(warm))
+		}
 	} else {
 		slog.Error("DATABASE_URL is not set")
 		os.Exit(1)
