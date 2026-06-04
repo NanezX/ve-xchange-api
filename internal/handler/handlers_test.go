@@ -296,6 +296,10 @@ func (m *mockStore) GetHistory(_ context.Context, _ string, _, _ time.Time) ([]d
 	return m.entries, m.lastErr
 }
 
+func (m *mockStore) GetLatestRates(_ context.Context) (map[string]db.HistoryEntry, error) {
+	return nil, nil
+}
+
 func (m *mockStore) Close() {}
 
 func withStore(s *state.State, store db.Store) Server {

@@ -6,7 +6,7 @@ Technical roadmap for what comes next: pending tech debt and planned features.
 
 ## Tech Debt
 
-### TD-1 — Warm Cache on Startup
+### TD-1 — Warm Cache on Startup ✅ (done)
 
 **Problem:** On startup `AppState` is zero-valued. Any request to `/rates` before the first worker tick returns empty/zero data. For Binance the wait is up to 5 minutes; for BCV up to 6 hours.
 
