@@ -162,6 +162,7 @@ func (h Server) GetRatesCurrencyHistory(w http.ResponseWriter, r *http.Request, 
 		apiEntries[i] = api.HistoryEntry{
 			Value:      e.Value,
 			RecordedAt: e.RecordedAt,
+			IsAverage:  e.IsAverage,
 		}
 	}
 

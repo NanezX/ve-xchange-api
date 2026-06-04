@@ -32,16 +32,21 @@ ORDER BY currency, recorded_at DESC;
 
 ---
 
-### TD-2 — Consolidation Worker (`is_average` in history)
+### TD-2 — Consolidation Worker (`is_average` in history) ✅ (done)
 
-**Problem:** `GET /rates/{currency}/history` returns raw observations. For USDT/Binance this means ~288 rows/day (one every 5 min). The API contract defines `is_average: true` for daily aggregates but this field is never populated.
+**Problem:** `GET /rates/{currency}/history` returns raw observations. For USDT/Binance this means ~288 rows/day (one every 5 min). The API contract defines `is_average: true` for daily aggregates but this field was never populated.
 
 **Solution:** A nightly consolidation worker that:
 1. Groups raw `usdt_binance` observations by day and computes the average.
-2. Inserts one summary row per day with an `is_average` flag (requires a new boolean column in `prices_history`).
-3. Optionally deletes the raw rows older than N days to bound table growth.
+2. Inserts one summary row with `is_average=true` (recorded_at = midnight UTC-4 of that day).
+3. Deletes the raw rows for that day to bound table growth.
 
-**Impact:** Medium. Not immediately needed but required for the full `/history` contract.
+**Implementation:**
+- Migration `00002_add_is_average.sql`: `ALTER TABLE prices_history ADD COLUMN is_average BOOLEAN NOT NULL DEFAULT FALSE`
+- `db.ConsolidateDay(ctx, currency, from, to)`: atomic transaction (avg → delete raw → delete old avg → insert new avg)
+- `worker.TaskJob` + `worker.StartTaskWorker`: daily scheduled tasks without provider coupling
+- `main.go`: consolidation `TaskJob` at 01:00 AM UTC-4 for `usdt_binance`
+- `api.HistoryEntry.IsAverage bool`: exposed in OpenAPI spec and JSON responses
 
 ---
 
