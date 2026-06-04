@@ -300,6 +300,10 @@ func (m *mockStore) GetLatestRates(_ context.Context) (map[string]db.HistoryEntr
 	return nil, nil
 }
 
+func (m *mockStore) ConsolidateDay(_ context.Context, _ string, _, _ time.Time) error {
+	return nil
+}
+
 func (m *mockStore) Close() {}
 
 func withStore(s *state.State, store db.Store) Server {

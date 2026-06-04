@@ -154,7 +154,7 @@ components:
           type: string
     HistoryEntry:
       type: object
-      required: [value, recorded_at]
+      required: [value, recorded_at, is_average]
       properties:
         value:
           type: number
@@ -163,6 +163,10 @@ components:
         recorded_at:
           type: string
           format: date-time
+        is_average:
+          type: boolean
+          description: "true when this entry is a daily consolidated average; false for a raw observation."
+          example: false
     RateHistory:
       type: object
       required: [currency, entries]

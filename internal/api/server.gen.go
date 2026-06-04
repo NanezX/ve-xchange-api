@@ -80,6 +80,7 @@ type HealthStatus string
 
 // HistoryEntry defines model for HistoryEntry.
 type HistoryEntry struct {
+	IsAverage  bool      `json:"is_average"`
 	RecordedAt time.Time `json:"recorded_at"`
 	Value      float64   `json:"value"`
 }

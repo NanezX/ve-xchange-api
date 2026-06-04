@@ -127,6 +127,28 @@ func main() {
 
 	workerWg := worker.StartPriceWorker(ctx, providerJobs)
 
+	// Nightly consolidation: replace the ~288 raw Binance observations from
+	// the previous day with a single daily-average row. Runs at 01:00 AM UTC-4
+	// (1 hour after the BCV fetch window closes).
+	taskWg := worker.StartTaskWorker(ctx, []worker.TaskJob{
+		{
+			Name:    "binance-consolidation",
+			DailyAt: worker.TimeOfDay{Hour: 1, Minute: 0, Location: utcMinus4},
+			Run: func(taskCtx context.Context) {
+				now := time.Now().In(utcMinus4)
+				yesterday := now.AddDate(0, 0, -1)
+				from := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, utcMinus4)
+				to := from.AddDate(0, 0, 1)
+				if err := dbStore.ConsolidateDay(taskCtx, string(api.UsdtBinance), from, to); err != nil {
+					slog.Error("binance consolidation failed",
+						"day", yesterday.Format("2006-01-02"), "error", err)
+				} else {
+					slog.Info("binance consolidation done", "day", yesterday.Format("2006-01-02"))
+				}
+			},
+		},
+	})
+
 	mux := http.NewServeMux()
 
 	api.HandlerFromMux(handler.NewServerWithStore(appState, dbStore), mux)
@@ -164,5 +186,6 @@ func main() {
 	}
 
 	workerWg.Wait()
+	taskWg.Wait()
 	slog.Info("shutdown complete")
 }
