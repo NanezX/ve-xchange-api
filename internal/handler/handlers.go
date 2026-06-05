@@ -12,8 +12,10 @@ import (
 
 // Staleness thresholds per currency. A rate older than its threshold is
 // reported with `is_stale = true` and forces /health into "degraded" status.
+// BCV publishes once per day (~6 PM VZ time); the worker fetches at midnight
+// VZ, so data can legitimately be up to 24h old. 26h gives a safe margin.
 const (
-	stalenessBcv     = 12 * time.Hour
+	stalenessBcv     = 26 * time.Hour
 	stalenessBinance = 15 * time.Minute
 )
 
