@@ -15,6 +15,7 @@ import (
 	"github.com/nanezx/ve-xchange-api/internal/config"
 	"github.com/nanezx/ve-xchange-api/internal/db"
 	"github.com/nanezx/ve-xchange-api/internal/handler"
+	"github.com/nanezx/ve-xchange-api/internal/metrics"
 	"github.com/nanezx/ve-xchange-api/internal/provider"
 	"github.com/nanezx/ve-xchange-api/internal/rates"
 	"github.com/nanezx/ve-xchange-api/internal/state"
@@ -89,6 +90,12 @@ func main() {
 			DailyAt:  &worker.TimeOfDay{Hour: 0, Minute: 5, Location: utcMinus4},
 			Apply: func(pr rates.PriceResponse) {
 				state.UpdateBcvPrice(appState, pr)
+				if v, ok := pr[state.KeyUsdBcv]; ok {
+					metrics.RateValue.WithLabelValues(string(api.UsdBcv)).Set(v)
+				}
+				if v, ok := pr[state.KeyEurBcv]; ok {
+					metrics.RateValue.WithLabelValues(string(api.EurBcv)).Set(v)
+				}
 				if dbStore != nil {
 					now := time.Now()
 					if v, ok := pr[state.KeyUsdBcv]; ok {
@@ -105,6 +112,14 @@ func main() {
 			},
 			OnFail:    func(_ int64) { state.MarkBcvFailing(appState) },
 			OnRecover: func() { state.ClearBcvFailing(appState) },
+			AfterFetch: func(consecutiveFails int64, success bool) {
+				status := "success"
+				if !success {
+					status = "failure"
+				}
+				metrics.ProviderFetchTotal.WithLabelValues("DolarAPI", status).Inc()
+				metrics.ProviderConsecutiveFailures.WithLabelValues("DolarAPI").Set(float64(consecutiveFails))
+			},
 		},
 		// P2P Binance API
 		{
@@ -112,6 +127,9 @@ func main() {
 			Every:    5 * time.Minute,
 			Apply: func(pr rates.PriceResponse) {
 				state.UpdateBinancePrice(appState, pr)
+				if v, ok := pr[state.KeyUsdtBinance]; ok {
+					metrics.RateValue.WithLabelValues(string(api.UsdtBinance)).Set(v)
+				}
 				if dbStore != nil {
 					if v, ok := pr[state.KeyUsdtBinance]; ok {
 						if err := dbStore.InsertRate(ctx, string(api.UsdtBinance), v, time.Now()); err != nil {
@@ -122,6 +140,14 @@ func main() {
 			},
 			OnFail:    func(_ int64) { state.MarkBinanceFailing(appState) },
 			OnRecover: func() { state.ClearBinanceFailing(appState) },
+			AfterFetch: func(consecutiveFails int64, success bool) {
+				status := "success"
+				if !success {
+					status = "failure"
+				}
+				metrics.ProviderFetchTotal.WithLabelValues("USDT", status).Inc()
+				metrics.ProviderConsecutiveFailures.WithLabelValues("USDT").Set(float64(consecutiveFails))
+			},
 		},
 	}
 
@@ -157,10 +183,11 @@ func main() {
 		http.ServeFile(w, r, "api/openapi.yaml")
 	})
 	mux.Handle("/docs/", v3.NewHandler("ve-xchange-api", "/openapi.yaml", "/docs/"))
+	mux.Handle("GET /metrics", metrics.Handler())
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf(":%d", appConfig.AppPort),
-		Handler: mux,
+		Handler: metrics.Middleware(mux),
 	}
 
 	serverErrCh := make(chan error, 1)
