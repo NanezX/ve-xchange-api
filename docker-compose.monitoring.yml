@@ -1,0 +1,66 @@
+# Monitoring stack: Prometheus + Grafana
+#
+# Port 3000 is taken by optikt. Grafana runs on 3001.
+# Prometheus is internal-only (no host port exposed).
+#
+# Requires the main app stack to be running first:
+#   docker compose up -d
+#
+# Then start monitoring independently:
+#   docker compose -f docker-compose.monitoring.yml up -d
+#
+# Expose Grafana via Tailscale (run once, persists across reboots):
+#   tailscale serve --bg https:443 /grafana/ http://localhost:3001
+#
+# If optikt already owns https:443 /, add only the /grafana/ path:
+#   tailscale serve https:443 /grafana/ http://localhost:3001
+#
+# Access: https://nanezx-elitebook.taild8f0b9.ts.net/grafana/
+#
+# The external network 've-xchange-api_default' is the default network created
+# by 'docker compose up' in this directory. If you run the main stack with a
+# different project name, update the network name below accordingly.
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.4.0
+    restart: unless-stopped
+    volumes:
+      - ./docker/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+    # No host port — Prometheus is only accessed by Grafana (internal network).
+    # Uncomment the line below temporarily if you need direct UI access.
+    # ports:
+    #   - '127.0.0.1:9090:9090'
+    networks:
+      - monitoring
+      - ve-xchange-api_default
+
+  grafana:
+    image: grafana/grafana:11.6.3
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      # Required for Tailscale subpath serving via /grafana/
+      GF_SERVER_ROOT_URL: https://nanezx-elitebook.taild8f0b9.ts.net/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - '127.0.0.1:3001:3000'
+    networks:
+      - monitoring
+    depends_on:
+      - prometheus
+
+volumes:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  monitoring:
+  ve-xchange-api_default:
+    external: true

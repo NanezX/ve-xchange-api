@@ -38,6 +38,9 @@ type ProviderJob struct {
 	// OnRecover is called on the first successful fetch after a streak of ≥3
 	// failures. Useful for clearing the degraded flag. Optional.
 	OnRecover func()
+	// AfterFetch is called after every fetch attempt. consecutiveFails is the
+	// updated streak count (0 after a successful fetch). Optional.
+	AfterFetch func(consecutiveFails int64, success bool)
 }
 
 // nextDaily returns the duration until the next occurrence of tod after now.
@@ -90,6 +93,9 @@ func StartPriceWorker(ctx context.Context, jobs []ProviderJob) *sync.WaitGroup {
 							"failure_number", consecutiveFails,
 							"error", err)
 					}
+					if currentJob.AfterFetch != nil {
+						currentJob.AfterFetch(consecutiveFails, false)
+					}
 					return
 				}
 				if consecutiveFails > 0 {
@@ -102,7 +108,9 @@ func StartPriceWorker(ctx context.Context, jobs []ProviderJob) *sync.WaitGroup {
 					consecutiveFails = 0
 				}
 				currentJob.Apply(resp)
-				slog.Info("provider updated", "provider", currentJob.Provider.GetName())
+				if currentJob.AfterFetch != nil {
+					currentJob.AfterFetch(consecutiveFails, true)
+				}
 			}
 
 			fetch()
