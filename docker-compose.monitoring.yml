@@ -46,7 +46,7 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
       # Required for Tailscale subpath serving via /grafana/
       GF_SERVER_ROOT_URL: https://nanezx-elitebook.taild8f0b9.ts.net/grafana/
-      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+      #GF_SERVER_SERVE_FROM_SUB_PATH: "true"
     volumes:
       - grafana_data:/var/lib/grafana
     ports:

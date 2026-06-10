@@ -29,7 +29,7 @@ docker compose -f docker-compose.monitoring.yml up -d
 Registrar subpath de Grafana:
 
 ```bash
-tailscale serve https:443 /grafana/ http://localhost:3001
+tailscale serve --bg --set-path /grafana/ http://localhost:3001
 ```
 
 Si quieres que quede en segundo plano (persistente en reinicios), puedes usar:
