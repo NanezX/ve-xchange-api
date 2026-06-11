@@ -10,9 +10,11 @@ import (
 // Map keys produced by each provider. Kept here as the single source of
 // truth so writers and readers cannot drift out of sync silently.
 const (
-	KeyUsdBcv      = "USD_BCV"
-	KeyEurBcv      = "EUR_BCV"
-	KeyUsdtBinance = "USDT_BINANCE"
+	KeyUsdBcv          = "USD_BCV"
+	KeyEurBcv          = "EUR_BCV"
+	KeyUsdtBinance     = "USDT_BINANCE"
+	KeyUsdtBinanceBuy  = "USDT_BINANCE_BUY"
+	KeyUsdtBinanceSell = "USDT_BINANCE_SELL"
 )
 
 type RateData struct {
@@ -22,9 +24,11 @@ type RateData struct {
 }
 
 type StateRates struct {
-	UsdBcv      RateData
-	EurBcv      RateData
-	UsdtBinance RateData
+	UsdBcv          RateData
+	EurBcv          RateData
+	UsdtBinance     RateData
+	UsdtBinanceBuy  RateData
+	UsdtBinanceSell RateData
 }
 
 type State struct {
@@ -71,6 +75,8 @@ func MarkBinanceFailing(s *State) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.rates.UsdtBinance.ProviderFailing = true
+	s.rates.UsdtBinanceBuy.ProviderFailing = true
+	s.rates.UsdtBinanceSell.ProviderFailing = true
 }
 
 // ClearBinanceFailing clears the failing flag for the Binance rate.
@@ -78,6 +84,8 @@ func ClearBinanceFailing(s *State) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.rates.UsdtBinance.ProviderFailing = false
+	s.rates.UsdtBinanceBuy.ProviderFailing = false
+	s.rates.UsdtBinanceSell.ProviderFailing = false
 }
 
 // WarmEntry is a single pre-loaded rate value used to warm the in-memory cache.
@@ -109,6 +117,16 @@ func WarmUp(s *State, entries map[string]WarmEntry) {
 		s.rates.UsdtBinance.Value = e.Value
 		s.rates.UsdtBinance.LastUpdated = &t
 	}
+	if e, ok := entries[KeyUsdtBinanceBuy]; ok {
+		t := e.RecordedAt
+		s.rates.UsdtBinanceBuy.Value = e.Value
+		s.rates.UsdtBinanceBuy.LastUpdated = &t
+	}
+	if e, ok := entries[KeyUsdtBinanceSell]; ok {
+		t := e.RecordedAt
+		s.rates.UsdtBinanceSell.Value = e.Value
+		s.rates.UsdtBinanceSell.LastUpdated = &t
+	}
 }
 
 // Missing keys are skipped (previous value preserved) so a partial provider
@@ -128,8 +146,8 @@ func UpdateBcvPrice(state *State, data rates.PriceResponse) {
 	}
 }
 
-// UpdateBinancePrice writes the USDT/Binance value from a provider response.
-// Missing key is skipped (previous value preserved).
+// UpdateBinancePrice writes the USDT/Binance values from a provider response.
+// Missing keys are skipped (previous value preserved).
 func UpdateBinancePrice(state *State, data rates.PriceResponse) {
 	state.mu.Lock()
 	defer state.mu.Unlock()
@@ -138,5 +156,13 @@ func UpdateBinancePrice(state *State, data rates.PriceResponse) {
 	if v, ok := data[KeyUsdtBinance]; ok {
 		state.rates.UsdtBinance.Value = v
 		state.rates.UsdtBinance.LastUpdated = &now
+	}
+	if v, ok := data[KeyUsdtBinanceBuy]; ok {
+		state.rates.UsdtBinanceBuy.Value = v
+		state.rates.UsdtBinanceBuy.LastUpdated = &now
+	}
+	if v, ok := data[KeyUsdtBinanceSell]; ok {
+		state.rates.UsdtBinanceSell.Value = v
+		state.rates.UsdtBinanceSell.LastUpdated = &now
 	}
 }
