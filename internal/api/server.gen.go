@@ -16,11 +16,11 @@ import (
 
 // Defines values for Currency.
 const (
-	EurBcv           Currency = "eur_bcv"
-	UsdBcv           Currency = "usd_bcv"
-	UsdtBinance      Currency = "usdt_binance"
-	UsdtBinanceBuy   Currency = "usdt_binance_buy"
-	UsdtBinanceSell  Currency = "usdt_binance_sell"
+	EurBcv          Currency = "eur_bcv"
+	UsdBcv          Currency = "usd_bcv"
+	UsdtBinance     Currency = "usdt_binance"
+	UsdtBinanceBuy  Currency = "usdt_binance_buy"
+	UsdtBinanceSell Currency = "usdt_binance_sell"
 )
 
 // Valid indicates whether the value is a known member of the Currency enum.
