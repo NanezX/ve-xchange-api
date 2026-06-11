@@ -107,6 +107,8 @@ components:
         - usd_bcv
         - eur_bcv
         - usdt_binance
+        - usdt_binance_buy
+        - usdt_binance_sell
     Health:
       type: object
       required: [status]
@@ -138,13 +140,17 @@ components:
           type: boolean
     AllRates:
       type: object
-      required: [usd_bcv, eur_bcv, usdt_binance]
+      required: [usd_bcv, eur_bcv, usdt_binance, usdt_binance_buy, usdt_binance_sell]
       properties:
         usd_bcv:
           $ref: '#/components/schemas/RateEntry'
         eur_bcv:
           $ref: '#/components/schemas/RateEntry'
         usdt_binance:
+          $ref: '#/components/schemas/RateEntry'
+        usdt_binance_buy:
+          $ref: '#/components/schemas/RateEntry'
+        usdt_binance_sell:
           $ref: '#/components/schemas/RateEntry'
     Error:
       type: object
