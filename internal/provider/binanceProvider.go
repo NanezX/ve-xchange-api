@@ -167,16 +167,38 @@ func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 		return nil, err
 	}
 
-	combined := slices.Concat(sellPrices, buyPrices)
-
-	if len(combined) == 0 {
-		return nil, errors.New("no prices found")
+	sellAvg, err := averageValid(sellPrices)
+	if err != nil {
+		return nil, fmt.Errorf("binance sell prices - %w", err)
 	}
 
+	buyAvg, err := averageValid(buyPrices)
+	if err != nil {
+		return nil, fmt.Errorf("binance buy prices - %w", err)
+	}
+
+	combined := slices.Concat(sellPrices, buyPrices)
+
+	overallAvg, err := averageValid(combined)
+	if err != nil {
+		return nil, fmt.Errorf("binance prices - %w", err)
+	}
+
+	return rates.PriceResponse{
+		"USDT_BINANCE":      overallAvg,
+		"USDT_BINANCE_BUY":  sellAvg,
+		"USDT_BINANCE_SELL": buyAvg,
+	}, nil
+
+}
+
+// averageValid computes the arithmetic mean of valid (positive, finite) prices.
+// Returns an error if no valid prices remain.
+func averageValid(prices []float64) (float64, error) {
 	var acc float64
 	var validCount int
 
-	for _, val := range combined {
+	for _, val := range prices {
 		if math.IsNaN(val) || math.IsInf(val, 0) || val <= 0 {
 			continue
 		}
@@ -185,16 +207,15 @@ func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 	}
 
 	if validCount == 0 {
-		return nil, fmt.Errorf("binance prices - no valid (positive, finite) prices found")
+		return 0, errors.New("no valid (positive, finite) prices found")
 	}
 
 	avg := acc / float64(validCount)
 	if math.IsNaN(avg) || math.IsInf(avg, 0) {
-		return nil, fmt.Errorf("binance prices - computed average is non-finite: %v", avg)
+		return 0, fmt.Errorf("computed average is non-finite: %v", avg)
 	}
 
-	return rates.PriceResponse{"USDT_BINANCE": avg}, nil
-
+	return avg, nil
 }
 
 func (p *BinanceProvider) GetName() string {

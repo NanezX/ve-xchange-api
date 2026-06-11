@@ -90,8 +90,15 @@ func TestGetPriceBinanceSuccess(t *testing.T) {
 	}
 
 	if prices["USDT_BINANCE"] != 525.742 {
-		t.Fatalf("Expected val=525.742, got %v", prices["USDT_BINANCE"])
-
+		t.Fatalf("Expected USDT_BINANCE=525.742, got %v", prices["USDT_BINANCE"])
+	}
+	// BUY (sell orders avg): (515 + 525.5 + 513.8 + 545.12 + 543) * 5 / 25 = 528.484
+	if prices["USDT_BINANCE_BUY"] != 528.484 {
+		t.Fatalf("Expected USDT_BINANCE_BUY=528.484, got %v", prices["USDT_BINANCE_BUY"])
+	}
+	// SELL (buy orders avg): (505 + 514 + 523 + 532 + 541) * 5 / 25 = 523.0
+	if prices["USDT_BINANCE_SELL"] != 523.0 {
+		t.Fatalf("Expected USDT_BINANCE_SELL=523.0, got %v", prices["USDT_BINANCE_SELL"])
 	}
 
 }
@@ -259,9 +266,15 @@ func TestGetPriceBinanceNegativePricesFiltered(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	avg := prices["USDT_BINANCE"]
-	// Only 500 and 600 should count: avg = (500*10 + 600*10) / 20 = 550.
 	if avg != 550.0 {
-		t.Fatalf("expected avg=550.0 (negatives filtered), got %v", avg)
+		t.Fatalf("expected USDT_BINANCE=550.0 (negatives filtered), got %v", avg)
+	}
+	// BUY and SELL are also computed (same data for both sides in this test).
+	if _, ok := prices["USDT_BINANCE_BUY"]; !ok {
+		t.Fatal("expected USDT_BINANCE_BUY key to be present")
+	}
+	if _, ok := prices["USDT_BINANCE_SELL"]; !ok {
+		t.Fatal("expected USDT_BINANCE_SELL key to be present")
 	}
 }
 
@@ -285,9 +298,13 @@ func TestGetPriceBinanceZeroPriceFiltered(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	avg := prices["USDT_BINANCE"]
-	// Only 500 should count across 10 pages * 2 types = 20 entries,
-	// but 20 zero entries are filtered, leaving 20 valid 500s → avg = 500.
 	if avg != 500.0 {
-		t.Fatalf("expected avg=500.0 (zeros filtered), got %v", avg)
+		t.Fatalf("expected USDT_BINANCE=500.0 (zeros filtered), got %v", avg)
+	}
+	if _, ok := prices["USDT_BINANCE_BUY"]; !ok {
+		t.Fatal("expected USDT_BINANCE_BUY key to be present")
+	}
+	if _, ok := prices["USDT_BINANCE_SELL"]; !ok {
+		t.Fatal("expected USDT_BINANCE_SELL key to be present")
 	}
 }
