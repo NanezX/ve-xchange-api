@@ -42,9 +42,11 @@ func (h Server) GetRates(w http.ResponseWriter, r *http.Request) {
 	now := h.now()
 
 	body := api.AllRates{
-		UsdBcv:      toRateEntry(snapshot.UsdBcv, stalenessBcv, now),
-		EurBcv:      toRateEntry(snapshot.EurBcv, stalenessBcv, now),
-		UsdtBinance: toRateEntry(snapshot.UsdtBinance, stalenessBinance, now),
+		UsdBcv:          toRateEntry(snapshot.UsdBcv, stalenessBcv, now),
+		EurBcv:          toRateEntry(snapshot.EurBcv, stalenessBcv, now),
+		UsdtBinance:     toRateEntry(snapshot.UsdtBinance, stalenessBinance, now),
+		UsdtBinanceBuy:  toRateEntry(snapshot.UsdtBinanceBuy, stalenessBinance, now),
+		UsdtBinanceSell: toRateEntry(snapshot.UsdtBinanceSell, stalenessBinance, now),
 	}
 
 	writeJSON(w, http.StatusOK, body)
@@ -67,6 +69,10 @@ func (h Server) GetRatesCurrency(w http.ResponseWriter, r *http.Request, currenc
 		entry = toRateEntry(snapshot.EurBcv, stalenessBcv, now)
 	case api.UsdtBinance:
 		entry = toRateEntry(snapshot.UsdtBinance, stalenessBinance, now)
+	case api.UsdtBinanceBuy:
+		entry = toRateEntry(snapshot.UsdtBinanceBuy, stalenessBinance, now)
+	case api.UsdtBinanceSell:
+		entry = toRateEntry(snapshot.UsdtBinanceSell, stalenessBinance, now)
 	}
 
 	writeJSON(w, http.StatusOK, entry)
@@ -85,6 +91,12 @@ func (h Server) GetHealth(w http.ResponseWriter, r *http.Request) {
 	}
 	if isStale(snapshot.UsdtBinance, stalenessBinance, now) {
 		stale = append(stale, api.UsdtBinance)
+	}
+	if isStale(snapshot.UsdtBinanceBuy, stalenessBinance, now) {
+		stale = append(stale, api.UsdtBinanceBuy)
+	}
+	if isStale(snapshot.UsdtBinanceSell, stalenessBinance, now) {
+		stale = append(stale, api.UsdtBinanceSell)
 	}
 
 	body := api.Health{Status: api.Ok}
