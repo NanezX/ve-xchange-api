@@ -130,10 +130,27 @@ func main() {
 				if v, ok := pr[state.KeyUsdtBinance]; ok {
 					metrics.RateValue.WithLabelValues(string(api.UsdtBinance)).Set(v)
 				}
+				if v, ok := pr[state.KeyUsdtBinanceBuy]; ok {
+					metrics.RateValue.WithLabelValues(string(api.UsdtBinanceBuy)).Set(v)
+				}
+				if v, ok := pr[state.KeyUsdtBinanceSell]; ok {
+					metrics.RateValue.WithLabelValues(string(api.UsdtBinanceSell)).Set(v)
+				}
 				if dbStore != nil {
+					now := time.Now()
 					if v, ok := pr[state.KeyUsdtBinance]; ok {
-						if err := dbStore.InsertRate(ctx, string(api.UsdtBinance), v, time.Now()); err != nil {
+						if err := dbStore.InsertRate(ctx, string(api.UsdtBinance), v, now); err != nil {
 							slog.Warn("failed to persist usdt_binance rate", "error", err)
+						}
+					}
+					if v, ok := pr[state.KeyUsdtBinanceBuy]; ok {
+						if err := dbStore.InsertRate(ctx, string(api.UsdtBinanceBuy), v, now); err != nil {
+							slog.Warn("failed to persist usdt_binance_buy rate", "error", err)
+						}
+					}
+					if v, ok := pr[state.KeyUsdtBinanceSell]; ok {
+						if err := dbStore.InsertRate(ctx, string(api.UsdtBinanceSell), v, now); err != nil {
+							slog.Warn("failed to persist usdt_binance_sell rate", "error", err)
 						}
 					}
 				}
@@ -165,11 +182,22 @@ func main() {
 				yesterday := now.AddDate(0, 0, -1)
 				from := time.Date(yesterday.Year(), yesterday.Month(), yesterday.Day(), 0, 0, 0, 0, utcMinus4)
 				to := from.AddDate(0, 0, 1)
-				if err := dbStore.ConsolidateDay(taskCtx, string(api.UsdtBinance), from, to); err != nil {
-					slog.Error("binance consolidation failed",
-						"day", yesterday.Format("2006-01-02"), "error", err)
-				} else {
-					slog.Info("binance consolidation done", "day", yesterday.Format("2006-01-02"))
+
+				currencies := []string{
+					string(api.UsdtBinance),
+					string(api.UsdtBinanceBuy),
+					string(api.UsdtBinanceSell),
+				}
+				for _, ccy := range currencies {
+					if err := dbStore.ConsolidateDay(taskCtx, ccy, from, to); err != nil {
+						slog.Error("binance consolidation failed",
+							"currency", ccy,
+							"day", yesterday.Format("2006-01-02"), "error", err)
+					} else {
+						slog.Info("binance consolidation done",
+							"currency", ccy,
+							"day", yesterday.Format("2006-01-02"))
+					}
 				}
 			},
 		},
