@@ -142,7 +142,7 @@ func (p *BinanceProvider) getAllOrders(tradeType TradeType) ([]float64, error) {
 	collectedPrices := []float64{}
 
 	// FIXME: Use goroutines to improve speed here
-	for page := uint(1); page <= 5; page++ {
+	for page := uint(1); page <= 2; page++ {
 		// Get the basic body for the P2P Asset/Fiat page
 		prices, err := p.getOrders(tradeType, page)
 
@@ -185,9 +185,9 @@ func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 	}
 
 	return rates.PriceResponse{
-		"USDT_BINANCE":      overallAvg,
-		"USDT_BINANCE_BUY":  sellAvg,
-		"USDT_BINANCE_SELL": buyAvg,
+		"USDT":              overallAvg,
+		"USDT_BINANCE_SELL": sellAvg,
+		"USDT_BINANCE_BUY":  buyAvg,
 	}, nil
 
 }

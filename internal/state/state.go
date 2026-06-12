@@ -12,9 +12,9 @@ import (
 const (
 	KeyUsdBcv          = "USD_BCV"
 	KeyEurBcv          = "EUR_BCV"
-	KeyUsdtBinance     = "USDT_BINANCE"
-	KeyUsdtBinanceBuy  = "USDT_BINANCE_BUY"
-	KeyUsdtBinanceSell = "USDT_BINANCE_SELL"
+	KeyUsdtBinance     = "USDT"
+	KeyUsdtBinanceBuy  = "USDT_BINANCE_SELL"
+	KeyUsdtBinanceSell = "USDT_BINANCE_BUY"
 )
 
 type RateData struct {

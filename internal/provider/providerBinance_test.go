@@ -89,16 +89,16 @@ func TestGetPriceBinanceSuccess(t *testing.T) {
 		t.Fatalf("Expected 10 calls (5 SELL + 5 BUY), got %d", callCount)
 	}
 
-	if prices["USDT_BINANCE"] != 525.742 {
-		t.Fatalf("Expected USDT_BINANCE=525.742, got %v", prices["USDT_BINANCE"])
+	if prices["USDT"] != 525.742 {
+		t.Fatalf("Expected USDT=525.742, got %v", prices["USDT"])
 	}
 	// BUY (sell orders avg): (515 + 525.5 + 513.8 + 545.12 + 543) * 5 / 25 = 528.484
-	if prices["USDT_BINANCE_BUY"] != 528.484 {
-		t.Fatalf("Expected USDT_BINANCE_BUY=528.484, got %v", prices["USDT_BINANCE_BUY"])
+	if prices["USDT_BINANCE_SELL"] != 528.484 {
+		t.Fatalf("Expected USDT_BINANCE_SELL=528.484, got %v", prices["USDT_BINANCE_SELL"])
 	}
 	// SELL (buy orders avg): (505 + 514 + 523 + 532 + 541) * 5 / 25 = 523.0
-	if prices["USDT_BINANCE_SELL"] != 523.0 {
-		t.Fatalf("Expected USDT_BINANCE_SELL=523.0, got %v", prices["USDT_BINANCE_SELL"])
+	if prices["USDT_BINANCE_BUY"] != 523.0 {
+		t.Fatalf("Expected USDT_BINANCE_BUY=523.0, got %v", prices["USDT_BINANCE_BUY"])
 	}
 
 }
@@ -265,16 +265,16 @@ func TestGetPriceBinanceNegativePricesFiltered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	avg := prices["USDT_BINANCE"]
+	avg := prices["USDT"]
 	if avg != 550.0 {
-		t.Fatalf("expected USDT_BINANCE=550.0 (negatives filtered), got %v", avg)
+		t.Fatalf("expected USDT=550.0 (negatives filtered), got %v", avg)
 	}
 	// BUY and SELL are also computed (same data for both sides in this test).
-	if _, ok := prices["USDT_BINANCE_BUY"]; !ok {
-		t.Fatal("expected USDT_BINANCE_BUY key to be present")
-	}
 	if _, ok := prices["USDT_BINANCE_SELL"]; !ok {
 		t.Fatal("expected USDT_BINANCE_SELL key to be present")
+	}
+	if _, ok := prices["USDT_BINANCE_BUY"]; !ok {
+		t.Fatal("expected USDT_BINANCE_BUY key to be present")
 	}
 }
 
@@ -297,14 +297,14 @@ func TestGetPriceBinanceZeroPriceFiltered(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	avg := prices["USDT_BINANCE"]
+	avg := prices["USDT"]
 	if avg != 500.0 {
-		t.Fatalf("expected USDT_BINANCE=500.0 (zeros filtered), got %v", avg)
-	}
-	if _, ok := prices["USDT_BINANCE_BUY"]; !ok {
-		t.Fatal("expected USDT_BINANCE_BUY key to be present")
+		t.Fatalf("expected USDT=500.0 (zeros filtered), got %v", avg)
 	}
 	if _, ok := prices["USDT_BINANCE_SELL"]; !ok {
 		t.Fatal("expected USDT_BINANCE_SELL key to be present")
+	}
+	if _, ok := prices["USDT_BINANCE_BUY"]; !ok {
+		t.Fatal("expected USDT_BINANCE_BUY key to be present")
 	}
 }
