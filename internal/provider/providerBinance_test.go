@@ -93,12 +93,12 @@ func TestGetPriceBinanceSuccess(t *testing.T) {
 		t.Fatalf("Expected USDT=525.742, got %v", prices["USDT"])
 	}
 	// BUY (sell orders avg): (515 + 525.5 + 513.8 + 545.12 + 543) * 5 / 25 = 528.484
-	if prices["USDT_BINANCE_SELL"] != 528.484 {
-		t.Fatalf("Expected USDT_BINANCE_SELL=528.484, got %v", prices["USDT_BINANCE_SELL"])
+	if prices["USDT_BINANCE_BUY"] != 528.484 {
+		t.Fatalf("Expected USDT_BINANCE_BUY=528.484, got %v", prices["USDT_BINANCE_BUY"])
 	}
 	// SELL (buy orders avg): (505 + 514 + 523 + 532 + 541) * 5 / 25 = 523.0
-	if prices["USDT_BINANCE_BUY"] != 523.0 {
-		t.Fatalf("Expected USDT_BINANCE_BUY=523.0, got %v", prices["USDT_BINANCE_BUY"])
+	if prices["USDT_BINANCE_SELL"] != 523.0 {
+		t.Fatalf("Expected USDT_BINANCE_SELL=523.0, got %v", prices["USDT_BINANCE_SELL"])
 	}
 
 }
