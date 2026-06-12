@@ -185,11 +185,11 @@ func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 	}
 
 	return rates.PriceResponse{
-		"USDT":              overallAvg,
+		"USDT": overallAvg,
 		// User wants to SELL: matches with merchants' BUY ADS.
 		"USDT_BINANCE_SELL": buyAvg,
 		// User wants to BUY: matches with merchants' SELL ADS.
-		"USDT_BINANCE_BUY":  sellAvg,
+		"USDT_BINANCE_BUY": sellAvg,
 	}, nil
 
 }
