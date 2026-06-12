@@ -16,11 +16,11 @@ import (
 
 // Defines values for Currency.
 const (
-	EurBcv          Currency = "eur_bcv"
-	UsdBcv          Currency = "usd_bcv"
-	UsdtBinance     Currency = "usdt"
-	UsdtBinanceBuy  Currency = "usdt_venta"
-	UsdtBinanceSell Currency = "usdt_compra"
+	EurBcv     Currency = "eur_bcv"
+	UsdBcv     Currency = "usd_bcv"
+	Usdt       Currency = "usdt"
+	UsdtCompra Currency = "usdt_compra"
+	UsdtVenta  Currency = "usdt_venta"
 )
 
 // Valid indicates whether the value is a known member of the Currency enum.
@@ -30,11 +30,11 @@ func (e Currency) Valid() bool {
 		return true
 	case UsdBcv:
 		return true
-	case UsdtBinance:
+	case Usdt:
 		return true
-	case UsdtBinanceBuy:
+	case UsdtCompra:
 		return true
-	case UsdtBinanceSell:
+	case UsdtVenta:
 		return true
 	default:
 		return false
@@ -61,11 +61,11 @@ func (e HealthStatus) Valid() bool {
 
 // AllRates defines model for AllRates.
 type AllRates struct {
-	EurBcv          RateEntry `json:"eur_bcv"`
-	UsdBcv          RateEntry `json:"usd_bcv"`
-	UsdtBinance     RateEntry `json:"usdt"`
-	UsdtBinanceBuy  RateEntry `json:"usdt_venta"`
-	UsdtBinanceSell RateEntry `json:"usdt_compra"`
+	EurBcv     RateEntry `json:"eur_bcv"`
+	UsdBcv     RateEntry `json:"usd_bcv"`
+	Usdt       RateEntry `json:"usdt"`
+	UsdtCompra RateEntry `json:"usdt_compra"`
+	UsdtVenta  RateEntry `json:"usdt_venta"`
 }
 
 // Currency defines model for Currency.
@@ -88,6 +88,7 @@ type HealthStatus string
 
 // HistoryEntry defines model for HistoryEntry.
 type HistoryEntry struct {
+	// IsAverage true when this entry is a daily consolidated average; false for a raw observation.
 	IsAverage  bool      `json:"is_average"`
 	RecordedAt time.Time `json:"recorded_at"`
 	Value      float64   `json:"value"`

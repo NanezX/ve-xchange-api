@@ -58,6 +58,8 @@ golangci-lint run
 
 # regenerate OpenAPI types (after editing api/openapi.yaml)
 go generate ./internal/api/...
+# or manually:
+go tool oapi-codegen --config api/oapi-codegen.yaml api/openapi.yaml
 ```
 
 ## Data sources
