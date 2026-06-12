@@ -18,9 +18,9 @@ import (
 const (
 	EurBcv          Currency = "eur_bcv"
 	UsdBcv          Currency = "usd_bcv"
-	UsdtBinance     Currency = "usdt_binance"
-	UsdtBinanceBuy  Currency = "usdt_binance_buy"
-	UsdtBinanceSell Currency = "usdt_binance_sell"
+	UsdtBinance     Currency = "usdt"
+	UsdtBinanceBuy  Currency = "usdt_venta"
+	UsdtBinanceSell Currency = "usdt_compra"
 )
 
 // Valid indicates whether the value is a known member of the Currency enum.
@@ -63,9 +63,9 @@ func (e HealthStatus) Valid() bool {
 type AllRates struct {
 	EurBcv          RateEntry `json:"eur_bcv"`
 	UsdBcv          RateEntry `json:"usd_bcv"`
-	UsdtBinance     RateEntry `json:"usdt_binance"`
-	UsdtBinanceBuy  RateEntry `json:"usdt_binance_buy"`
-	UsdtBinanceSell RateEntry `json:"usdt_binance_sell"`
+	UsdtBinance     RateEntry `json:"usdt"`
+	UsdtBinanceBuy  RateEntry `json:"usdt_venta"`
+	UsdtBinanceSell RateEntry `json:"usdt_compra"`
 }
 
 // Currency defines model for Currency.

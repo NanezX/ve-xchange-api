@@ -106,9 +106,9 @@ components:
       enum:
         - usd_bcv
         - eur_bcv
-        - usdt_binance
-        - usdt_binance_buy
-        - usdt_binance_sell
+        - usdt
+        - usdt_venta
+        - usdt_compra
     Health:
       type: object
       required: [status]
@@ -140,17 +140,17 @@ components:
           type: boolean
     AllRates:
       type: object
-      required: [usd_bcv, eur_bcv, usdt_binance, usdt_binance_buy, usdt_binance_sell]
+      required: [usd_bcv, eur_bcv, usdt, usdt_venta, usdt_compra]
       properties:
         usd_bcv:
           $ref: '#/components/schemas/RateEntry'
         eur_bcv:
           $ref: '#/components/schemas/RateEntry'
-        usdt_binance:
+        usdt:
           $ref: '#/components/schemas/RateEntry'
-        usdt_binance_buy:
+        usdt_venta:
           $ref: '#/components/schemas/RateEntry'
-        usdt_binance_sell:
+        usdt_compra:
           $ref: '#/components/schemas/RateEntry'
     Error:
       type: object

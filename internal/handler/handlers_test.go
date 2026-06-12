@@ -116,7 +116,7 @@ func TestGetRatesCurrency_OK(t *testing.T) {
 	srv := withFixedNow(st, now)
 	mux := mountMux(t, srv)
 
-	req := httptest.NewRequest(http.MethodGet, "/rates/usdt_binance", nil)
+	req := httptest.NewRequest(http.MethodGet, "/rates/usdt", nil)
 	w := httptest.NewRecorder()
 	mux.ServeHTTP(w, req)
 
@@ -215,13 +215,13 @@ func TestGetHealth_DegradedWhenStale(t *testing.T) {
 		t.Fatalf("expected status=degraded, got %s", resp.Status)
 	}
 	if resp.Stale == nil || len(*resp.Stale) != 1 || (*resp.Stale)[0] != api.UsdtBinance {
-		t.Fatalf("expected stale=[usdt_binance], got %v", resp.Stale)
+		t.Fatalf("expected stale=[usdt], got %v", resp.Stale)
 	}
 }
 
 func TestGetHealth_DegradedWhenProviderFailing(t *testing.T) {
 	// Timestamps are all fresh, but the Binance provider is marked as failing.
-	// /health must still return 503 and include usdt_binance in the stale list.
+	// /health must still return 503 and include usdt in the stale list.
 	now := time.Now()
 	recent := now.Add(-1 * time.Minute)
 	bcvRecent := now.Add(-1 * time.Hour)
@@ -256,7 +256,7 @@ func TestGetHealth_DegradedWhenProviderFailing(t *testing.T) {
 	}
 	// MarkBinanceFailing sets ProviderFailing on average, buy, and sell — all 3 are stale.
 	if resp.Stale == nil || len(*resp.Stale) != 3 {
-		t.Fatalf("expected stale=[usdt_binance, usdt_binance_buy, usdt_binance_sell], got %v", resp.Stale)
+		t.Fatalf("expected stale=[usdt, usdt_venta, usdt_compra], got %v", resp.Stale)
 	}
 }
 

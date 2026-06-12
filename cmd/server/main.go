@@ -140,17 +140,17 @@ func main() {
 					now := time.Now()
 					if v, ok := pr[state.KeyUsdtBinance]; ok {
 						if err := dbStore.InsertRate(ctx, string(api.UsdtBinance), v, now); err != nil {
-							slog.Warn("failed to persist usdt_binance rate", "error", err)
+							slog.Warn("failed to persist usdt rate", "error", err)
 						}
 					}
 					if v, ok := pr[state.KeyUsdtBinanceBuy]; ok {
 						if err := dbStore.InsertRate(ctx, string(api.UsdtBinanceBuy), v, now); err != nil {
-							slog.Warn("failed to persist usdt_binance_buy rate", "error", err)
+							slog.Warn("failed to persist usdt_venta rate", "error", err)
 						}
 					}
 					if v, ok := pr[state.KeyUsdtBinanceSell]; ok {
 						if err := dbStore.InsertRate(ctx, string(api.UsdtBinanceSell), v, now); err != nil {
-							slog.Warn("failed to persist usdt_binance_sell rate", "error", err)
+							slog.Warn("failed to persist usdt_compra rate", "error", err)
 						}
 					}
 				}

@@ -37,7 +37,7 @@ ORDER BY currency, recorded_at DESC;
 **Problem:** `GET /rates/{currency}/history` returns raw observations. For USDT/Binance this means ~288 rows/day (one every 5 min). The API contract defines `is_average: true` for daily aggregates but this field was never populated.
 
 **Solution:** A nightly consolidation worker that:
-1. Groups raw `usdt_binance` observations by day and computes the average.
+1. Groups raw `usdt` observations by day and computes the average.
 2. Inserts one summary row with `is_average=true` (recorded_at = midnight UTC-4 of that day).
 3. Deletes the raw rows for that day to bound table growth.
 
@@ -45,7 +45,7 @@ ORDER BY currency, recorded_at DESC;
 - Migration `00002_add_is_average.sql`: `ALTER TABLE prices_history ADD COLUMN is_average BOOLEAN NOT NULL DEFAULT FALSE`
 - `db.ConsolidateDay(ctx, currency, from, to)`: atomic transaction (avg → delete raw → delete old avg → insert new avg)
 - `worker.TaskJob` + `worker.StartTaskWorker`: daily scheduled tasks without provider coupling
-- `main.go`: consolidation `TaskJob` at 01:00 AM UTC-4 for `usdt_binance`
+- `main.go`: consolidation `TaskJob` at 01:00 AM UTC-4 for `usdt`
 - `api.HistoryEntry.IsAverage bool`: exposed in OpenAPI spec and JSON responses
 
 ---

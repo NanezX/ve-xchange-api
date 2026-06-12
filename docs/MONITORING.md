@@ -95,7 +95,7 @@ Valores de labels usados actualmente:
 
 - provider: DolarAPI, USDT
 - status (provider_fetch_total): success, failure
-- currency: usd_bcv, eur_bcv, usdt_binance
+- currency: usd_bcv, eur_bcv, usdt
 
 ## Queries utiles para empezar (copy/paste)
 
@@ -108,7 +108,7 @@ rate_value
 Si quieres una moneda especifica:
 
 ```promql
-rate_value{currency="usdt_binance"}
+rate_value{currency="usdt"}
 ```
 
 ### 2) Exitos por proveedor en 1h (Stat/Bar gauge)

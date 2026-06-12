@@ -7,13 +7,13 @@ REST API for Venezuelan exchange rates. Fetches BCV (Banco Central de Venezuela)
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Health check — `200 OK` or `503` if any rate is stale |
-| `GET` | `/rates` | All current rates (`usd_bcv`, `eur_bcv`, `usdt_binance`) |
+| `GET` | `/rates` | All current rates (`usd_bcv`, `eur_bcv`, `usdt`) |
 | `GET` | `/rates/{currency}` | Single currency rate |
 | `GET` | `/rates/{currency}/history` | Historical rates (`?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD`) |
 | `GET` | `/docs/` | Interactive Swagger UI |
 | `GET` | `/openapi.yaml` | Raw OpenAPI 3.0 spec |
 
-**Currency values:** `usd_bcv`, `eur_bcv`, `usdt_binance`
+**Currency values:** `usd_bcv`, `eur_bcv`, `usdt`
 
 ## Configuration
 
@@ -66,7 +66,7 @@ go generate ./internal/api/...
 |----------|--------|---------|
 | `usd_bcv` | [DolarAPI](https://ve.dolarapi.com) | every 6 hours |
 | `eur_bcv` | [DolarAPI](https://ve.dolarapi.com) | every 6 hours |
-| `usdt_binance` | Binance P2P API | every 5 minutes |
+| `usdt` | Binance P2P API | every 5 minutes |
 
 ## Docker image
 
