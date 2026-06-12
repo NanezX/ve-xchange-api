@@ -84,21 +84,21 @@ func TestUpdateBinancePriceSetsValue(t *testing.T) {
 	after := time.Now()
 
 	r := s.GetRates()
-	if r.UsdtBinance.Value != 100.0 {
-		t.Fatalf("expected UsdtBinance=100.0, got %v", r.UsdtBinance.Value)
+	if r.Usdt.Value != 100.0 {
+		t.Fatalf("expected Usdt=100.0, got %v", r.Usdt.Value)
 	}
-	if r.UsdtBinanceBuy.Value != 110.0 {
-		t.Fatalf("expected UsdtBinanceBuy=110.0, got %v", r.UsdtBinanceBuy.Value)
+	if r.UsdtCompra.Value != 110.0 {
+		t.Fatalf("expected UsdtCompra=110.0, got %v", r.UsdtCompra.Value)
 	}
-	if r.UsdtBinanceSell.Value != 90.0 {
-		t.Fatalf("expected UsdtBinanceSell=90.0, got %v", r.UsdtBinanceSell.Value)
+	if r.UsdtVenta.Value != 90.0 {
+		t.Fatalf("expected UsdtVenta=90.0, got %v", r.UsdtVenta.Value)
 	}
-	if r.UsdtBinance.LastUpdated == nil {
-		t.Fatal("expected UsdtBinance.LastUpdated to be set")
+	if r.Usdt.LastUpdated == nil {
+		t.Fatal("expected Usdt.LastUpdated to be set")
 	}
-	if r.UsdtBinance.LastUpdated.Before(before) || r.UsdtBinance.LastUpdated.After(after) {
-		t.Fatalf("UsdtBinance.LastUpdated %v outside window [%v, %v]",
-			r.UsdtBinance.LastUpdated, before, after)
+	if r.Usdt.LastUpdated.Before(before) || r.Usdt.LastUpdated.After(after) {
+		t.Fatalf("Usdt.LastUpdated %v outside window [%v, %v]",
+			r.Usdt.LastUpdated, before, after)
 	}
 }
 
@@ -113,14 +113,14 @@ func TestUpdateBinancePriceSkipsMissingKey(t *testing.T) {
 	UpdateBinancePrice(s, rates.PriceResponse{})
 
 	r := s.GetRates()
-	if r.UsdtBinance.Value != 99.0 {
-		t.Fatalf("expected UsdtBinance=99.0 (preserved), got %v", r.UsdtBinance.Value)
+	if r.Usdt.Value != 99.0 {
+		t.Fatalf("expected Usdt=99.0 (preserved), got %v", r.Usdt.Value)
 	}
-	if r.UsdtBinanceBuy.Value != 88.0 {
-		t.Fatalf("expected UsdtBinanceBuy=88.0 (preserved), got %v", r.UsdtBinanceBuy.Value)
+	if r.UsdtCompra.Value != 88.0 {
+		t.Fatalf("expected UsdtCompra=88.0 (preserved), got %v", r.UsdtCompra.Value)
 	}
-	if r.UsdtBinanceSell.Value != 77.0 {
-		t.Fatalf("expected UsdtBinanceSell=77.0 (preserved), got %v", r.UsdtBinanceSell.Value)
+	if r.UsdtVenta.Value != 77.0 {
+		t.Fatalf("expected UsdtVenta=77.0 (preserved), got %v", r.UsdtVenta.Value)
 	}
 }
 
@@ -131,16 +131,16 @@ func TestUpdateRatesReplacesAll(t *testing.T) {
 
 	now := time.Now()
 	s.UpdateRates(StateRates{
-		UsdBcv:          RateData{Value: 1.0, LastUpdated: &now},
-		EurBcv:          RateData{Value: 2.0, LastUpdated: &now},
-		UsdtBinance:     RateData{Value: 3.0, LastUpdated: &now},
-		UsdtBinanceBuy:  RateData{Value: 4.0, LastUpdated: &now},
-		UsdtBinanceSell: RateData{Value: 5.0, LastUpdated: &now},
+		UsdBcv:     RateData{Value: 1.0, LastUpdated: &now},
+		EurBcv:     RateData{Value: 2.0, LastUpdated: &now},
+		Usdt:       RateData{Value: 3.0, LastUpdated: &now},
+		UsdtCompra: RateData{Value: 4.0, LastUpdated: &now},
+		UsdtVenta:  RateData{Value: 5.0, LastUpdated: &now},
 	})
 
 	r := s.GetRates()
-	if r.UsdBcv.Value != 1.0 || r.EurBcv.Value != 2.0 || r.UsdtBinance.Value != 3.0 ||
-		r.UsdtBinanceBuy.Value != 4.0 || r.UsdtBinanceSell.Value != 5.0 {
+	if r.UsdBcv.Value != 1.0 || r.EurBcv.Value != 2.0 || r.Usdt.Value != 3.0 ||
+		r.UsdtCompra.Value != 4.0 || r.UsdtVenta.Value != 5.0 {
 		t.Fatalf("unexpected rates: %+v", r)
 	}
 }
@@ -149,12 +149,12 @@ func TestGetRatesOnFreshStateReturnsZeroValues(t *testing.T) {
 	s := NewState()
 	r := s.GetRates()
 
-	if r.UsdBcv.Value != 0 || r.EurBcv.Value != 0 || r.UsdtBinance.Value != 0 ||
-		r.UsdtBinanceBuy.Value != 0 || r.UsdtBinanceSell.Value != 0 {
+	if r.UsdBcv.Value != 0 || r.EurBcv.Value != 0 || r.Usdt.Value != 0 ||
+		r.UsdtCompra.Value != 0 || r.UsdtVenta.Value != 0 {
 		t.Fatalf("expected zero values, got %+v", r)
 	}
-	if r.UsdBcv.LastUpdated != nil || r.EurBcv.LastUpdated != nil || r.UsdtBinance.LastUpdated != nil ||
-		r.UsdtBinanceBuy.LastUpdated != nil || r.UsdtBinanceSell.LastUpdated != nil {
+	if r.UsdBcv.LastUpdated != nil || r.EurBcv.LastUpdated != nil || r.Usdt.LastUpdated != nil ||
+		r.UsdtCompra.LastUpdated != nil || r.UsdtVenta.LastUpdated != nil {
 		t.Fatal("expected nil LastUpdated on fresh state")
 	}
 }
@@ -249,8 +249,8 @@ func TestMarkBcvFailingSetsFlag(t *testing.T) {
 	if !r.EurBcv.ProviderFailing {
 		t.Fatal("expected EurBcv.ProviderFailing=true")
 	}
-	if r.UsdtBinance.ProviderFailing {
-		t.Fatal("expected UsdtBinance.ProviderFailing=false (unaffected)")
+	if r.Usdt.ProviderFailing {
+		t.Fatal("expected Usdt.ProviderFailing=false (unaffected)")
 	}
 }
 
@@ -270,14 +270,14 @@ func TestMarkBinanceFailingSetsFlag(t *testing.T) {
 	MarkBinanceFailing(s)
 
 	r := s.GetRates()
-	if !r.UsdtBinance.ProviderFailing {
-		t.Fatal("expected UsdtBinance.ProviderFailing=true")
+	if !r.Usdt.ProviderFailing {
+		t.Fatal("expected Usdt.ProviderFailing=true")
 	}
-	if !r.UsdtBinanceBuy.ProviderFailing {
-		t.Fatal("expected UsdtBinanceBuy.ProviderFailing=true")
+	if !r.UsdtCompra.ProviderFailing {
+		t.Fatal("expected UsdtCompra.ProviderFailing=true")
 	}
-	if !r.UsdtBinanceSell.ProviderFailing {
-		t.Fatal("expected UsdtBinanceSell.ProviderFailing=true")
+	if !r.UsdtVenta.ProviderFailing {
+		t.Fatal("expected UsdtVenta.ProviderFailing=true")
 	}
 	if r.UsdBcv.ProviderFailing || r.EurBcv.ProviderFailing {
 		t.Fatal("expected BCV flags unaffected by MarkBinanceFailing")
@@ -290,14 +290,14 @@ func TestClearBinanceFailingClearsFlag(t *testing.T) {
 	ClearBinanceFailing(s)
 
 	r := s.GetRates()
-	if r.UsdtBinance.ProviderFailing {
-		t.Fatal("expected UsdtBinance.ProviderFailing=false after ClearBinanceFailing")
+	if r.Usdt.ProviderFailing {
+		t.Fatal("expected Usdt.ProviderFailing=false after ClearBinanceFailing")
 	}
-	if r.UsdtBinanceBuy.ProviderFailing {
-		t.Fatal("expected UsdtBinanceBuy.ProviderFailing=false after ClearBinanceFailing")
+	if r.UsdtCompra.ProviderFailing {
+		t.Fatal("expected UsdtCompra.ProviderFailing=false after ClearBinanceFailing")
 	}
-	if r.UsdtBinanceSell.ProviderFailing {
-		t.Fatal("expected UsdtBinanceSell.ProviderFailing=false after ClearBinanceFailing")
+	if r.UsdtVenta.ProviderFailing {
+		t.Fatal("expected UsdtVenta.ProviderFailing=false after ClearBinanceFailing")
 	}
 }
 
@@ -344,14 +344,14 @@ func TestWarmUpSetsAllCurrencies(t *testing.T) {
 	if r.EurBcv.Value != 520.0 {
 		t.Fatalf("expected EurBcv=520.0, got %f", r.EurBcv.Value)
 	}
-	if r.UsdtBinance.Value != 530.1 {
-		t.Fatalf("expected UsdtBinance=530.1, got %f", r.UsdtBinance.Value)
+	if r.Usdt.Value != 530.1 {
+		t.Fatalf("expected Usdt=530.1, got %f", r.Usdt.Value)
 	}
-	if r.UsdtBinanceBuy.Value != 540.0 {
-		t.Fatalf("expected UsdtBinanceBuy=540.0, got %f", r.UsdtBinanceBuy.Value)
+	if r.UsdtCompra.Value != 540.0 {
+		t.Fatalf("expected UsdtCompra=540.0, got %f", r.UsdtCompra.Value)
 	}
-	if r.UsdtBinanceSell.Value != 520.0 {
-		t.Fatalf("expected UsdtBinanceSell=520.0, got %f", r.UsdtBinanceSell.Value)
+	if r.UsdtVenta.Value != 520.0 {
+		t.Fatalf("expected UsdtVenta=520.0, got %f", r.UsdtVenta.Value)
 	}
 	if r.UsdBcv.LastUpdated == nil || !r.UsdBcv.LastUpdated.Equal(ts) {
 		t.Fatalf("expected UsdBcv.LastUpdated=%v, got %v", ts, r.UsdBcv.LastUpdated)
@@ -380,14 +380,14 @@ func TestWarmUpPartialMapOnlyUpdatesPresent(t *testing.T) {
 	if r.UsdBcv.Value != 480.0 {
 		t.Fatalf("expected UsdBcv=480.0, got %f", r.UsdBcv.Value)
 	}
-	if r.UsdtBinance.Value != 99.9 {
-		t.Fatalf("expected UsdtBinance unchanged=99.9, got %f", r.UsdtBinance.Value)
+	if r.Usdt.Value != 99.9 {
+		t.Fatalf("expected Usdt unchanged=99.9, got %f", r.Usdt.Value)
 	}
-	if r.UsdtBinanceBuy.Value != 88.8 {
-		t.Fatalf("expected UsdtBinanceBuy unchanged=88.8, got %f", r.UsdtBinanceBuy.Value)
+	if r.UsdtCompra.Value != 88.8 {
+		t.Fatalf("expected UsdtCompra unchanged=88.8, got %f", r.UsdtCompra.Value)
 	}
-	if r.UsdtBinanceSell.Value != 77.7 {
-		t.Fatalf("expected UsdtBinanceSell unchanged=77.7, got %f", r.UsdtBinanceSell.Value)
+	if r.UsdtVenta.Value != 77.7 {
+		t.Fatalf("expected UsdtVenta unchanged=77.7, got %f", r.UsdtVenta.Value)
 	}
 }
 

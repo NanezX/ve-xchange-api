@@ -128,28 +128,28 @@ func main() {
 			Apply: func(pr rates.PriceResponse) {
 				state.UpdateBinancePrice(appState, pr)
 				if v, ok := pr[state.KeyUsdtBinance]; ok {
-					metrics.RateValue.WithLabelValues(string(api.UsdtBinance)).Set(v)
+					metrics.RateValue.WithLabelValues(string(api.Usdt)).Set(v)
 				}
 				if v, ok := pr[state.KeyUsdtBinanceBuy]; ok {
-					metrics.RateValue.WithLabelValues(string(api.UsdtBinanceBuy)).Set(v)
+					metrics.RateValue.WithLabelValues(string(api.UsdtCompra)).Set(v)
 				}
 				if v, ok := pr[state.KeyUsdtBinanceSell]; ok {
-					metrics.RateValue.WithLabelValues(string(api.UsdtBinanceSell)).Set(v)
+					metrics.RateValue.WithLabelValues(string(api.UsdtVenta)).Set(v)
 				}
 				if dbStore != nil {
 					now := time.Now()
 					if v, ok := pr[state.KeyUsdtBinance]; ok {
-						if err := dbStore.InsertRate(ctx, string(api.UsdtBinance), v, now); err != nil {
+						if err := dbStore.InsertRate(ctx, string(api.Usdt), v, now); err != nil {
 							slog.Warn("failed to persist usdt rate", "error", err)
 						}
 					}
 					if v, ok := pr[state.KeyUsdtBinanceBuy]; ok {
-						if err := dbStore.InsertRate(ctx, string(api.UsdtBinanceBuy), v, now); err != nil {
+						if err := dbStore.InsertRate(ctx, string(api.UsdtCompra), v, now); err != nil {
 							slog.Warn("failed to persist usdt_venta rate", "error", err)
 						}
 					}
 					if v, ok := pr[state.KeyUsdtBinanceSell]; ok {
-						if err := dbStore.InsertRate(ctx, string(api.UsdtBinanceSell), v, now); err != nil {
+						if err := dbStore.InsertRate(ctx, string(api.UsdtVenta), v, now); err != nil {
 							slog.Warn("failed to persist usdt_compra rate", "error", err)
 						}
 					}
@@ -184,9 +184,9 @@ func main() {
 				to := from.AddDate(0, 0, 1)
 
 				currencies := []string{
-					string(api.UsdtBinance),
-					string(api.UsdtBinanceBuy),
-					string(api.UsdtBinanceSell),
+					string(api.Usdt),
+					string(api.UsdtCompra),
+					string(api.UsdtVenta),
 				}
 				for _, ccy := range currencies {
 					if err := dbStore.ConsolidateDay(taskCtx, ccy, from, to); err != nil {

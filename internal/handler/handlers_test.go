@@ -34,11 +34,11 @@ func TestGetRates_AllFresh(t *testing.T) {
 
 	st := state.NewState()
 	st.UpdateRates(state.StateRates{
-		UsdBcv:          state.RateData{Value: 480.5, LastUpdated: &ago},
-		EurBcv:          state.RateData{Value: 520.1, LastUpdated: &ago},
-		UsdtBinance:     state.RateData{Value: 535.2, LastUpdated: &ago},
-		UsdtBinanceBuy:  state.RateData{Value: 540.0, LastUpdated: &ago},
-		UsdtBinanceSell: state.RateData{Value: 530.0, LastUpdated: &ago},
+		UsdBcv:     state.RateData{Value: 480.5, LastUpdated: &ago},
+		EurBcv:     state.RateData{Value: 520.1, LastUpdated: &ago},
+		Usdt:       state.RateData{Value: 535.2, LastUpdated: &ago},
+		UsdtCompra: state.RateData{Value: 540.0, LastUpdated: &ago},
+		UsdtVenta:  state.RateData{Value: 530.0, LastUpdated: &ago},
 	})
 
 	srv := withFixedNow(st, now)
@@ -60,17 +60,17 @@ func TestGetRates_AllFresh(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	if resp.UsdBcv.Value != 480.5 || resp.EurBcv.Value != 520.1 || resp.UsdtBinance.Value != 535.2 {
+	if resp.UsdBcv.Value != 480.5 || resp.EurBcv.Value != 520.1 || resp.Usdt.Value != 535.2 {
 		t.Fatalf("unexpected values: %+v", resp)
 	}
-	if resp.UsdtBinanceBuy.Value != 540.0 {
-		t.Fatalf("expected UsdtBinanceBuy=540.0, got %v", resp.UsdtBinanceBuy.Value)
+	if resp.UsdtCompra.Value != 540.0 {
+		t.Fatalf("expected UsdtCompra=540.0, got %v", resp.UsdtCompra.Value)
 	}
-	if resp.UsdtBinanceSell.Value != 530.0 {
-		t.Fatalf("expected UsdtBinanceSell=530.0, got %v", resp.UsdtBinanceSell.Value)
+	if resp.UsdtVenta.Value != 530.0 {
+		t.Fatalf("expected UsdtVenta=530.0, got %v", resp.UsdtVenta.Value)
 	}
-	if resp.UsdBcv.IsStale || resp.EurBcv.IsStale || resp.UsdtBinance.IsStale ||
-		resp.UsdtBinanceBuy.IsStale || resp.UsdtBinanceSell.IsStale {
+	if resp.UsdBcv.IsStale || resp.EurBcv.IsStale || resp.Usdt.IsStale ||
+		resp.UsdtCompra.IsStale || resp.UsdtVenta.IsStale {
 		t.Fatalf("expected no stale entries: %+v", resp)
 	}
 	if resp.UsdBcv.DataAgeSeconds != 30 {
@@ -96,8 +96,8 @@ func TestGetRates_EmptyStateIsStale(t *testing.T) {
 		t.Fatalf("decode: %v", err)
 	}
 
-	if !resp.UsdBcv.IsStale || !resp.EurBcv.IsStale || !resp.UsdtBinance.IsStale ||
-		!resp.UsdtBinanceBuy.IsStale || !resp.UsdtBinanceSell.IsStale {
+	if !resp.UsdBcv.IsStale || !resp.EurBcv.IsStale || !resp.Usdt.IsStale ||
+		!resp.UsdtCompra.IsStale || !resp.UsdtVenta.IsStale {
 		t.Fatalf("expected every entry to be stale when state is empty: %+v", resp)
 	}
 	if resp.UsdBcv.LastUpdated != nil {
@@ -110,7 +110,7 @@ func TestGetRatesCurrency_OK(t *testing.T) {
 	ago := now.Add(-1 * time.Minute)
 	st := state.NewState()
 	st.UpdateRates(state.StateRates{
-		UsdtBinance: state.RateData{Value: 540.0, LastUpdated: &ago},
+		Usdt: state.RateData{Value: 540.0, LastUpdated: &ago},
 	})
 
 	srv := withFixedNow(st, now)
@@ -153,11 +153,11 @@ func TestGetHealth_OK(t *testing.T) {
 
 	st := state.NewState()
 	st.UpdateRates(state.StateRates{
-		UsdBcv:          state.RateData{Value: 1, LastUpdated: &bcvRecent},
-		EurBcv:          state.RateData{Value: 1, LastUpdated: &bcvRecent},
-		UsdtBinance:     state.RateData{Value: 1, LastUpdated: &recent},
-		UsdtBinanceBuy:  state.RateData{Value: 1, LastUpdated: &recent},
-		UsdtBinanceSell: state.RateData{Value: 1, LastUpdated: &recent},
+		UsdBcv:     state.RateData{Value: 1, LastUpdated: &bcvRecent},
+		EurBcv:     state.RateData{Value: 1, LastUpdated: &bcvRecent},
+		Usdt:       state.RateData{Value: 1, LastUpdated: &recent},
+		UsdtCompra: state.RateData{Value: 1, LastUpdated: &recent},
+		UsdtVenta:  state.RateData{Value: 1, LastUpdated: &recent},
 	})
 	srv := withFixedNow(st, now)
 	mux := mountMux(t, srv)
@@ -190,11 +190,11 @@ func TestGetHealth_DegradedWhenStale(t *testing.T) {
 
 	st := state.NewState()
 	st.UpdateRates(state.StateRates{
-		UsdBcv:          state.RateData{Value: 1, LastUpdated: &bcvOK},
-		EurBcv:          state.RateData{Value: 1, LastUpdated: &bcvOK},
-		UsdtBinance:     state.RateData{Value: 1, LastUpdated: &veryOld},
-		UsdtBinanceBuy:  state.RateData{Value: 1, LastUpdated: &recent},
-		UsdtBinanceSell: state.RateData{Value: 1, LastUpdated: &recent},
+		UsdBcv:     state.RateData{Value: 1, LastUpdated: &bcvOK},
+		EurBcv:     state.RateData{Value: 1, LastUpdated: &bcvOK},
+		Usdt:       state.RateData{Value: 1, LastUpdated: &veryOld},
+		UsdtCompra: state.RateData{Value: 1, LastUpdated: &recent},
+		UsdtVenta:  state.RateData{Value: 1, LastUpdated: &recent},
 	})
 	srv := withFixedNow(st, now)
 	mux := mountMux(t, srv)
@@ -214,7 +214,7 @@ func TestGetHealth_DegradedWhenStale(t *testing.T) {
 	if resp.Status != api.Degraded {
 		t.Fatalf("expected status=degraded, got %s", resp.Status)
 	}
-	if resp.Stale == nil || len(*resp.Stale) != 1 || (*resp.Stale)[0] != api.UsdtBinance {
+	if resp.Stale == nil || len(*resp.Stale) != 1 || (*resp.Stale)[0] != api.Usdt {
 		t.Fatalf("expected stale=[usdt], got %v", resp.Stale)
 	}
 }
@@ -228,11 +228,11 @@ func TestGetHealth_DegradedWhenProviderFailing(t *testing.T) {
 
 	st := state.NewState()
 	st.UpdateRates(state.StateRates{
-		UsdBcv:          state.RateData{Value: 480.0, LastUpdated: &bcvRecent},
-		EurBcv:          state.RateData{Value: 520.0, LastUpdated: &bcvRecent},
-		UsdtBinance:     state.RateData{Value: 530.0, LastUpdated: &recent},
-		UsdtBinanceBuy:  state.RateData{Value: 530.0, LastUpdated: &recent},
-		UsdtBinanceSell: state.RateData{Value: 530.0, LastUpdated: &recent},
+		UsdBcv:     state.RateData{Value: 480.0, LastUpdated: &bcvRecent},
+		EurBcv:     state.RateData{Value: 520.0, LastUpdated: &bcvRecent},
+		Usdt:       state.RateData{Value: 530.0, LastUpdated: &recent},
+		UsdtCompra: state.RateData{Value: 530.0, LastUpdated: &recent},
+		UsdtVenta:  state.RateData{Value: 530.0, LastUpdated: &recent},
 	})
 	state.MarkBinanceFailing(st)
 
@@ -266,11 +266,11 @@ func TestGetRates_ProviderFailingIsStaleEvenIfRecent(t *testing.T) {
 
 	st := state.NewState()
 	st.UpdateRates(state.StateRates{
-		UsdBcv:          state.RateData{Value: 480.0, LastUpdated: &recent},
-		EurBcv:          state.RateData{Value: 520.0, LastUpdated: &recent},
-		UsdtBinance:     state.RateData{Value: 530.0, LastUpdated: &recent},
-		UsdtBinanceBuy:  state.RateData{Value: 535.0, LastUpdated: &recent},
-		UsdtBinanceSell: state.RateData{Value: 525.0, LastUpdated: &recent},
+		UsdBcv:     state.RateData{Value: 480.0, LastUpdated: &recent},
+		EurBcv:     state.RateData{Value: 520.0, LastUpdated: &recent},
+		Usdt:       state.RateData{Value: 530.0, LastUpdated: &recent},
+		UsdtCompra: state.RateData{Value: 535.0, LastUpdated: &recent},
+		UsdtVenta:  state.RateData{Value: 525.0, LastUpdated: &recent},
 	})
 	state.MarkBcvFailing(st)
 
@@ -295,14 +295,14 @@ func TestGetRates_ProviderFailingIsStaleEvenIfRecent(t *testing.T) {
 	if !resp.EurBcv.IsStale {
 		t.Fatal("expected EurBcv.is_stale=true when provider is failing")
 	}
-	if resp.UsdtBinance.IsStale {
-		t.Fatal("expected UsdtBinance.is_stale=false (not failing)")
+	if resp.Usdt.IsStale {
+		t.Fatal("expected Usdt.is_stale=false (not failing)")
 	}
-	if resp.UsdtBinanceBuy.IsStale {
-		t.Fatal("expected UsdtBinanceBuy.is_stale=false (not failing)")
+	if resp.UsdtCompra.IsStale {
+		t.Fatal("expected UsdtCompra.is_stale=false (not failing)")
 	}
-	if resp.UsdtBinanceSell.IsStale {
-		t.Fatal("expected UsdtBinanceSell.is_stale=false (not failing)")
+	if resp.UsdtVenta.IsStale {
+		t.Fatal("expected UsdtVenta.is_stale=false (not failing)")
 	}
 }
 

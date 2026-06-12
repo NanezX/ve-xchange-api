@@ -24,11 +24,11 @@ type RateData struct {
 }
 
 type StateRates struct {
-	UsdBcv          RateData
-	EurBcv          RateData
-	UsdtBinance     RateData
-	UsdtBinanceBuy  RateData
-	UsdtBinanceSell RateData
+	UsdBcv     RateData
+	EurBcv     RateData
+	Usdt       RateData
+	UsdtCompra RateData
+	UsdtVenta  RateData
 }
 
 type State struct {
@@ -74,18 +74,18 @@ func ClearBcvFailing(s *State) {
 func MarkBinanceFailing(s *State) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.rates.UsdtBinance.ProviderFailing = true
-	s.rates.UsdtBinanceBuy.ProviderFailing = true
-	s.rates.UsdtBinanceSell.ProviderFailing = true
+	s.rates.Usdt.ProviderFailing = true
+	s.rates.UsdtCompra.ProviderFailing = true
+	s.rates.UsdtVenta.ProviderFailing = true
 }
 
 // ClearBinanceFailing clears the failing flag for the Binance rate.
 func ClearBinanceFailing(s *State) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.rates.UsdtBinance.ProviderFailing = false
-	s.rates.UsdtBinanceBuy.ProviderFailing = false
-	s.rates.UsdtBinanceSell.ProviderFailing = false
+	s.rates.Usdt.ProviderFailing = false
+	s.rates.UsdtCompra.ProviderFailing = false
+	s.rates.UsdtVenta.ProviderFailing = false
 }
 
 // WarmEntry is a single pre-loaded rate value used to warm the in-memory cache.
@@ -114,18 +114,18 @@ func WarmUp(s *State, entries map[string]WarmEntry) {
 	}
 	if e, ok := entries[KeyUsdtBinance]; ok {
 		t := e.RecordedAt
-		s.rates.UsdtBinance.Value = e.Value
-		s.rates.UsdtBinance.LastUpdated = &t
+		s.rates.Usdt.Value = e.Value
+		s.rates.Usdt.LastUpdated = &t
 	}
 	if e, ok := entries[KeyUsdtBinanceBuy]; ok {
 		t := e.RecordedAt
-		s.rates.UsdtBinanceBuy.Value = e.Value
-		s.rates.UsdtBinanceBuy.LastUpdated = &t
+		s.rates.UsdtCompra.Value = e.Value
+		s.rates.UsdtCompra.LastUpdated = &t
 	}
 	if e, ok := entries[KeyUsdtBinanceSell]; ok {
 		t := e.RecordedAt
-		s.rates.UsdtBinanceSell.Value = e.Value
-		s.rates.UsdtBinanceSell.LastUpdated = &t
+		s.rates.UsdtVenta.Value = e.Value
+		s.rates.UsdtVenta.LastUpdated = &t
 	}
 }
 
@@ -154,15 +154,15 @@ func UpdateBinancePrice(state *State, data rates.PriceResponse) {
 
 	now := time.Now()
 	if v, ok := data[KeyUsdtBinance]; ok {
-		state.rates.UsdtBinance.Value = v
-		state.rates.UsdtBinance.LastUpdated = &now
+		state.rates.Usdt.Value = v
+		state.rates.Usdt.LastUpdated = &now
 	}
 	if v, ok := data[KeyUsdtBinanceBuy]; ok {
-		state.rates.UsdtBinanceBuy.Value = v
-		state.rates.UsdtBinanceBuy.LastUpdated = &now
+		state.rates.UsdtCompra.Value = v
+		state.rates.UsdtCompra.LastUpdated = &now
 	}
 	if v, ok := data[KeyUsdtBinanceSell]; ok {
-		state.rates.UsdtBinanceSell.Value = v
-		state.rates.UsdtBinanceSell.LastUpdated = &now
+		state.rates.UsdtVenta.Value = v
+		state.rates.UsdtVenta.LastUpdated = &now
 	}
 }

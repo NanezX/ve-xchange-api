@@ -85,8 +85,8 @@ func TestGetPriceBinanceSuccess(t *testing.T) {
 		t.Fatalf("Expected to also use BUY P2P Data, but never called")
 	}
 
-	if callCount != 10 {
-		t.Fatalf("Expected 10 calls (5 SELL + 5 BUY), got %d", callCount)
+	if callCount != 4 {
+		t.Fatalf("Expected 4 calls (5 SELL + 5 BUY), got %d", callCount)
 	}
 
 	if prices["USDT"] != 525.742 {

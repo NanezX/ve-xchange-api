@@ -119,7 +119,7 @@
 | | Details |
 |---|---|
 | **Improvement** | Add a database (SQLite for development, PostgreSQL for production) to persist historical rates. `AppState` remains as a fast in-memory read cache. |
-| **Current state** | `AppState` only stores the **latest value** of each rate (`UsdBCV`, `EurBCV`, `UsdtBinance`). If the process restarts, rates are zero-valued until the tickers fetch new data. No historical data exists. |
+| **Current state** | `AppState` only stores the **latest value** of each rate (`UsdBCV`, `EurBCV`, `Usdt`). If the process restarts, rates are zero-valued until the tickers fetch new data. No historical data exists. |
 | **Rationale** | **(a)** On startup, the latest rate can be loaded from the DB for immediate data availability (warm cache) instead of waiting for the first tick. **(b)** Historical data enables endpoints like "average rate over the last month", "daily variation", "trend chart" — high-value data for API consumers. **(c)** In-memory `AppState` continues serving `/rates` with ~0 latency (mutex read-lock only); the DB is written to asynchronously. SQLite (via `modernc.org/sqlite`, pure Go without CGO) is the simplest option (single file, no extra infrastructure); PostgreSQL for scenarios with multiple instances or high write volume. |
 
 ### 4.2 — Graceful Shutdown [DONE]
