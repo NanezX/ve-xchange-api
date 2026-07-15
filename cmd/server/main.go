@@ -250,5 +250,3 @@ func main() {
 	taskWg.Wait()
 	slog.Info("shutdown complete")
 }
-
-
