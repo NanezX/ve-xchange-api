@@ -136,11 +136,11 @@ func UpdateBcvPrice(state *State, data rates.PriceResponse) {
 	defer state.mu.Unlock()
 
 	now := time.Now()
-	if v, ok := data[KeyUsdBcv]; ok {
+	if v, ok := data.Values[KeyUsdBcv]; ok {
 		state.rates.UsdBcv.Value = v
 		state.rates.UsdBcv.LastUpdated = &now
 	}
-	if v, ok := data[KeyEurBcv]; ok {
+	if v, ok := data.Values[KeyEurBcv]; ok {
 		state.rates.EurBcv.Value = v
 		state.rates.EurBcv.LastUpdated = &now
 	}
@@ -153,15 +153,15 @@ func UpdateBinancePrice(state *State, data rates.PriceResponse) {
 	defer state.mu.Unlock()
 
 	now := time.Now()
-	if v, ok := data[KeyUsdtBinance]; ok {
+	if v, ok := data.Values[KeyUsdtBinance]; ok {
 		state.rates.Usdt.Value = v
 		state.rates.Usdt.LastUpdated = &now
 	}
-	if v, ok := data[KeyUsdtBinanceBuy]; ok {
+	if v, ok := data.Values[KeyUsdtBinanceBuy]; ok {
 		state.rates.UsdtCompra.Value = v
 		state.rates.UsdtCompra.LastUpdated = &now
 	}
-	if v, ok := data[KeyUsdtBinanceSell]; ok {
+	if v, ok := data.Values[KeyUsdtBinanceSell]; ok {
 		state.rates.UsdtVenta.Value = v
 		state.rates.UsdtVenta.LastUpdated = &now
 	}

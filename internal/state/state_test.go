@@ -13,8 +13,7 @@ func TestUpdateBcvPriceSetsValues(t *testing.T) {
 
 	before := time.Now()
 	UpdateBcvPrice(s, rates.PriceResponse{
-		KeyUsdBcv: 50.5,
-		KeyEurBcv: 60.0,
+		Values: map[string]float64{KeyUsdBcv: 50.5, KeyEurBcv: 60.0},
 	})
 	after := time.Now()
 
@@ -40,13 +39,12 @@ func TestUpdateBcvPriceSkipsMissingKeys(t *testing.T) {
 
 	// Seed initial values
 	UpdateBcvPrice(s, rates.PriceResponse{
-		KeyUsdBcv: 50.0,
-		KeyEurBcv: 60.0,
+		Values: map[string]float64{KeyUsdBcv: 50.0, KeyEurBcv: 60.0},
 	})
 
 	// Update only USD — EUR must be preserved
 	UpdateBcvPrice(s, rates.PriceResponse{
-		KeyUsdBcv: 55.0,
+		Values: map[string]float64{KeyUsdBcv: 55.0},
 	})
 
 	r := s.GetRates()
@@ -61,7 +59,7 @@ func TestUpdateBcvPriceSkipsMissingKeys(t *testing.T) {
 func TestUpdateBcvPriceEmptyResponsePreservesState(t *testing.T) {
 	s := NewState()
 
-	UpdateBcvPrice(s, rates.PriceResponse{KeyUsdBcv: 42.0, KeyEurBcv: 43.0})
+	UpdateBcvPrice(s, rates.PriceResponse{Values: map[string]float64{KeyUsdBcv: 42.0, KeyEurBcv: 43.0}})
 	UpdateBcvPrice(s, rates.PriceResponse{})
 
 	r := s.GetRates()
@@ -77,9 +75,11 @@ func TestUpdateBinancePriceSetsValue(t *testing.T) {
 
 	before := time.Now()
 	UpdateBinancePrice(s, rates.PriceResponse{
-		KeyUsdtBinance:     100.0,
-		KeyUsdtBinanceBuy:  110.0,
-		KeyUsdtBinanceSell: 90.0,
+		Values: map[string]float64{
+			KeyUsdtBinance:     100.0,
+			KeyUsdtBinanceBuy:  110.0,
+			KeyUsdtBinanceSell: 90.0,
+		},
 	})
 	after := time.Now()
 
@@ -106,9 +106,11 @@ func TestUpdateBinancePriceSkipsMissingKey(t *testing.T) {
 	s := NewState()
 
 	UpdateBinancePrice(s, rates.PriceResponse{
-		KeyUsdtBinance:     99.0,
-		KeyUsdtBinanceBuy:  88.0,
-		KeyUsdtBinanceSell: 77.0,
+		Values: map[string]float64{
+			KeyUsdtBinance:     99.0,
+			KeyUsdtBinanceBuy:  88.0,
+			KeyUsdtBinanceSell: 77.0,
+		},
 	})
 	UpdateBinancePrice(s, rates.PriceResponse{})
 
@@ -171,7 +173,7 @@ func TestConcurrentBcvAndBinanceUpdates(t *testing.T) {
 	for range goroutines {
 		go func() {
 			defer wg.Done()
-			UpdateBcvPrice(s, rates.PriceResponse{KeyUsdBcv: 50.0, KeyEurBcv: 60.0})
+			UpdateBcvPrice(s, rates.PriceResponse{Values: map[string]float64{KeyUsdBcv: 50.0, KeyEurBcv: 60.0}})
 		}()
 		go func() {
 			defer wg.Done()
@@ -193,9 +195,11 @@ func TestConcurrentBinanceUpdates(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			UpdateBinancePrice(s, rates.PriceResponse{
-				KeyUsdtBinance:     100.0,
-				KeyUsdtBinanceBuy:  110.0,
-				KeyUsdtBinanceSell: 90.0,
+				Values: map[string]float64{
+					KeyUsdtBinance:     100.0,
+					KeyUsdtBinanceBuy:  110.0,
+					KeyUsdtBinanceSell: 90.0,
+				},
 			})
 		}()
 		go func() {
@@ -217,14 +221,16 @@ func TestConcurrentMixedWriters(t *testing.T) {
 	for range goroutines {
 		go func() {
 			defer wg.Done()
-			UpdateBcvPrice(s, rates.PriceResponse{KeyUsdBcv: 10.0, KeyEurBcv: 11.0})
+			UpdateBcvPrice(s, rates.PriceResponse{Values: map[string]float64{KeyUsdBcv: 10.0, KeyEurBcv: 11.0}})
 		}()
 		go func() {
 			defer wg.Done()
 			UpdateBinancePrice(s, rates.PriceResponse{
-				KeyUsdtBinance:     20.0,
-				KeyUsdtBinanceBuy:  22.0,
-				KeyUsdtBinanceSell: 18.0,
+				Values: map[string]float64{
+					KeyUsdtBinance:     20.0,
+					KeyUsdtBinanceBuy:  22.0,
+					KeyUsdtBinanceSell: 18.0,
+				},
 			})
 		}()
 		go func() {

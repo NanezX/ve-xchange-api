@@ -82,28 +82,34 @@ func main() {
 
 	// Add provider to lists
 	providerJobs := []worker.ProviderJob{
-		// DolarAPI — BCV publishes tomorrow's rate at 5-6 PM each day.
-		// We fetch at 00:05 AM UTC-4 so we always apply the rate that is
-		// currently valid for today, never tomorrow's rate ahead of time.
+		// BCV publishes the next business day's rate around 5-7 PM UTC-4.
 		{
-			Provider: provider.NewDolarDolarApiProvider(client),
-			DailyAt:  &worker.TimeOfDay{Hour: 0, Minute: 5, Location: utcMinus4},
+			Provider: provider.NewBCVProvider(client),
+			BusinessWindow: &worker.BusinessWindow{
+				Start:        worker.TimeOfDay{Hour: 17, Minute: 0, Location: utcMinus4},
+				End:          worker.TimeOfDay{Hour: 19, Minute: 0, Location: utcMinus4},
+				RetryEvery:   30 * time.Minute,
+				WeekdaysOnly: true,
+			},
+			ValidateScheduled: func(pr rates.PriceResponse, now time.Time) error {
+				return provider.ValidateBCVPublication(pr, now, utcMinus4)
+			},
 			Apply: func(pr rates.PriceResponse) {
 				state.UpdateBcvPrice(appState, pr)
-				if v, ok := pr[state.KeyUsdBcv]; ok {
+				if v, ok := pr.Values[state.KeyUsdBcv]; ok {
 					metrics.RateValue.WithLabelValues(string(api.UsdBcv)).Set(v)
 				}
-				if v, ok := pr[state.KeyEurBcv]; ok {
+				if v, ok := pr.Values[state.KeyEurBcv]; ok {
 					metrics.RateValue.WithLabelValues(string(api.EurBcv)).Set(v)
 				}
 				if dbStore != nil {
 					now := time.Now()
-					if v, ok := pr[state.KeyUsdBcv]; ok {
+					if v, ok := pr.Values[state.KeyUsdBcv]; ok {
 						if err := dbStore.InsertRate(ctx, string(api.UsdBcv), v, now); err != nil {
 							slog.Warn("failed to persist usd_bcv rate", "error", err)
 						}
 					}
-					if v, ok := pr[state.KeyEurBcv]; ok {
+					if v, ok := pr.Values[state.KeyEurBcv]; ok {
 						if err := dbStore.InsertRate(ctx, string(api.EurBcv), v, now); err != nil {
 							slog.Warn("failed to persist eur_bcv rate", "error", err)
 						}
@@ -117,8 +123,8 @@ func main() {
 				if !success {
 					status = "failure"
 				}
-				metrics.ProviderFetchTotal.WithLabelValues("DolarAPI", status).Inc()
-				metrics.ProviderConsecutiveFailures.WithLabelValues("DolarAPI").Set(float64(consecutiveFails))
+				metrics.ProviderFetchTotal.WithLabelValues("BCV", status).Inc()
+				metrics.ProviderConsecutiveFailures.WithLabelValues("BCV").Set(float64(consecutiveFails))
 			},
 		},
 		// P2P Binance API
@@ -127,28 +133,28 @@ func main() {
 			Every:    5 * time.Minute,
 			Apply: func(pr rates.PriceResponse) {
 				state.UpdateBinancePrice(appState, pr)
-				if v, ok := pr[state.KeyUsdtBinance]; ok {
+				if v, ok := pr.Values[state.KeyUsdtBinance]; ok {
 					metrics.RateValue.WithLabelValues(string(api.Usdt)).Set(v)
 				}
-				if v, ok := pr[state.KeyUsdtBinanceBuy]; ok {
+				if v, ok := pr.Values[state.KeyUsdtBinanceBuy]; ok {
 					metrics.RateValue.WithLabelValues(string(api.UsdtCompra)).Set(v)
 				}
-				if v, ok := pr[state.KeyUsdtBinanceSell]; ok {
+				if v, ok := pr.Values[state.KeyUsdtBinanceSell]; ok {
 					metrics.RateValue.WithLabelValues(string(api.UsdtVenta)).Set(v)
 				}
 				if dbStore != nil {
 					now := time.Now()
-					if v, ok := pr[state.KeyUsdtBinance]; ok {
+					if v, ok := pr.Values[state.KeyUsdtBinance]; ok {
 						if err := dbStore.InsertRate(ctx, string(api.Usdt), v, now); err != nil {
 							slog.Warn("failed to persist usdt rate", "error", err)
 						}
 					}
-					if v, ok := pr[state.KeyUsdtBinanceBuy]; ok {
+					if v, ok := pr.Values[state.KeyUsdtBinanceBuy]; ok {
 						if err := dbStore.InsertRate(ctx, string(api.UsdtCompra), v, now); err != nil {
 							slog.Warn("failed to persist usdt_venta rate", "error", err)
 						}
 					}
-					if v, ok := pr[state.KeyUsdtBinanceSell]; ok {
+					if v, ok := pr.Values[state.KeyUsdtBinanceSell]; ok {
 						if err := dbStore.InsertRate(ctx, string(api.UsdtVenta), v, now); err != nil {
 							slog.Warn("failed to persist usdt_compra rate", "error", err)
 						}

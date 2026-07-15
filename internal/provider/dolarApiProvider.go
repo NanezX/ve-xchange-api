@@ -41,36 +41,36 @@ func (p *DolarApiProvider) GetPrices() (rates.PriceResponse, error) {
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("DolarAPI prices - Error  %w", err)
+		return rates.PriceResponse{}, fmt.Errorf("DolarAPI prices - Error  %w", err)
 	}
 
 	// Init value
-	resp := rates.PriceResponse{}
+	resp := rates.PriceResponse{Values: make(map[string]float64)}
 
 	// TODO: Should we tak care if slice length is different than two? The API returns 2 items (USD and EUR)
 	for _, rate := range data {
 		switch rate.Moneda {
 		case "USD":
-			resp["USD_BCV"] = rate.Promedio
+			resp.Values["USD_BCV"] = rate.Promedio
 		case "EUR":
-			resp["EUR_BCV"] = rate.Promedio
+			resp.Values["EUR_BCV"] = rate.Promedio
 		}
 	}
 
-	if len(resp) != 2 {
-		return nil, fmt.Errorf("DolarAPI prices - invalid rates: USD=%.2f, EUR=%.2f (must be > 0)",
-			resp["USD_BCV"], resp["EUR_BCV"])
+	if len(resp.Values) != 2 {
+		return rates.PriceResponse{}, fmt.Errorf("DolarAPI prices - invalid rates: USD=%.2f, EUR=%.2f (must be > 0)",
+			resp.Values["USD_BCV"], resp.Values["EUR_BCV"])
 	}
 
-	if resp["USD_BCV"] <= 0 || resp["EUR_BCV"] <= 0 {
-		return nil, fmt.Errorf("DolarAPI prices - invalid rates: USD=%.2f, EUR=%.2f (must be > 0)",
-			resp["USD_BCV"], resp["EUR_BCV"])
+	if resp.Values["USD_BCV"] <= 0 || resp.Values["EUR_BCV"] <= 0 {
+		return rates.PriceResponse{}, fmt.Errorf("DolarAPI prices - invalid rates: USD=%.2f, EUR=%.2f (must be > 0)",
+			resp.Values["USD_BCV"], resp.Values["EUR_BCV"])
 	}
 
-	if math.IsNaN(resp["USD_BCV"]) || math.IsNaN(resp["EUR_BCV"]) ||
-		math.IsInf(resp["USD_BCV"], 0) || math.IsInf(resp["EUR_BCV"], 0) {
-		return nil, fmt.Errorf("DolarAPI prices - non-finite rates: USD=%v, EUR=%v",
-			resp["USD_BCV"], resp["EUR_BCV"])
+	if math.IsNaN(resp.Values["USD_BCV"]) || math.IsNaN(resp.Values["EUR_BCV"]) ||
+		math.IsInf(resp.Values["USD_BCV"], 0) || math.IsInf(resp.Values["EUR_BCV"], 0) {
+		return rates.PriceResponse{}, fmt.Errorf("DolarAPI prices - non-finite rates: USD=%v, EUR=%v",
+			resp.Values["USD_BCV"], resp.Values["EUR_BCV"])
 	}
 
 	return resp, nil

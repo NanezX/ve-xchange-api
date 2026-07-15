@@ -38,15 +38,32 @@ func NewServerWithStore(appState *state.State, store db.Store) Server {
 }
 
 func (h Server) GetRates(w http.ResponseWriter, r *http.Request) {
+	if h.store == nil {
+		writeJSON(w, http.StatusServiceUnavailable, api.Error{Error: "database not configured"})
+		return
+	}
+
+	latest, err := h.store.GetLatestRates(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, api.Error{Error: "failed to query latest rates"})
+		return
+	}
+
 	snapshot := h.appState.GetRates()
 	now := h.now()
 
+	usdBcv, hasUsdBcv := latest[string(api.UsdBcv)]
+	eurBcv, hasEurBcv := latest[string(api.EurBcv)]
+	usdt, hasUsdt := latest[string(api.Usdt)]
+	usdtCompra, hasUsdtCompra := latest[string(api.UsdtCompra)]
+	usdtVenta, hasUsdtVenta := latest[string(api.UsdtVenta)]
+
 	body := api.AllRates{
-		UsdBcv:     toRateEntry(snapshot.UsdBcv, stalenessBcv, now),
-		EurBcv:     toRateEntry(snapshot.EurBcv, stalenessBcv, now),
-		Usdt:       toRateEntry(snapshot.Usdt, stalenessBinance, now),
-		UsdtCompra: toRateEntry(snapshot.UsdtCompra, stalenessBinance, now),
-		UsdtVenta:  toRateEntry(snapshot.UsdtVenta, stalenessBinance, now),
+		UsdBcv:     toStoredRateEntry(usdBcv, hasUsdBcv, snapshot.UsdBcv.ProviderFailing, stalenessBcv, now),
+		EurBcv:     toStoredRateEntry(eurBcv, hasEurBcv, snapshot.EurBcv.ProviderFailing, stalenessBcv, now),
+		Usdt:       toStoredRateEntry(usdt, hasUsdt, snapshot.Usdt.ProviderFailing, stalenessBinance, now),
+		UsdtCompra: toStoredRateEntry(usdtCompra, hasUsdtCompra, snapshot.UsdtCompra.ProviderFailing, stalenessBinance, now),
+		UsdtVenta:  toStoredRateEntry(usdtVenta, hasUsdtVenta, snapshot.UsdtVenta.ProviderFailing, stalenessBinance, now),
 	}
 
 	writeJSON(w, http.StatusOK, body)
@@ -57,6 +74,16 @@ func (h Server) GetRatesCurrency(w http.ResponseWriter, r *http.Request, currenc
 		writeJSON(w, http.StatusNotFound, api.Error{Error: "unknown currency"})
 		return
 	}
+	if h.store == nil {
+		writeJSON(w, http.StatusServiceUnavailable, api.Error{Error: "database not configured"})
+		return
+	}
+
+	latest, err := h.store.GetLatestRates(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusServiceUnavailable, api.Error{Error: "failed to query latest rates"})
+		return
+	}
 
 	snapshot := h.appState.GetRates()
 	now := h.now()
@@ -64,15 +91,20 @@ func (h Server) GetRatesCurrency(w http.ResponseWriter, r *http.Request, currenc
 	var entry api.RateEntry
 	switch currency {
 	case api.UsdBcv:
-		entry = toRateEntry(snapshot.UsdBcv, stalenessBcv, now)
+		stored, ok := latest[string(api.UsdBcv)]
+		entry = toStoredRateEntry(stored, ok, snapshot.UsdBcv.ProviderFailing, stalenessBcv, now)
 	case api.EurBcv:
-		entry = toRateEntry(snapshot.EurBcv, stalenessBcv, now)
+		stored, ok := latest[string(api.EurBcv)]
+		entry = toStoredRateEntry(stored, ok, snapshot.EurBcv.ProviderFailing, stalenessBcv, now)
 	case api.Usdt:
-		entry = toRateEntry(snapshot.Usdt, stalenessBinance, now)
+		stored, ok := latest[string(api.Usdt)]
+		entry = toStoredRateEntry(stored, ok, snapshot.Usdt.ProviderFailing, stalenessBinance, now)
 	case api.UsdtCompra:
-		entry = toRateEntry(snapshot.UsdtCompra, stalenessBinance, now)
+		stored, ok := latest[string(api.UsdtCompra)]
+		entry = toStoredRateEntry(stored, ok, snapshot.UsdtCompra.ProviderFailing, stalenessBinance, now)
 	case api.UsdtVenta:
-		entry = toRateEntry(snapshot.UsdtVenta, stalenessBinance, now)
+		stored, ok := latest[string(api.UsdtVenta)]
+		entry = toStoredRateEntry(stored, ok, snapshot.UsdtVenta.ProviderFailing, stalenessBinance, now)
 	}
 
 	writeJSON(w, http.StatusOK, entry)
@@ -110,25 +142,18 @@ func (h Server) GetHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, status, body)
 }
 
-// toRateEntry projects a state.RateData onto the api.RateEntry contract,
-// computing age and staleness against the provided threshold.
-func toRateEntry(d state.RateData, threshold time.Duration, now time.Time) api.RateEntry {
-	if d.LastUpdated == nil || d.ProviderFailing {
-		return api.RateEntry{
-			Value:          d.Value,
-			LastUpdated:    d.LastUpdated,
-			DataAgeSeconds: 0,
-			IsStale:        true,
-		}
+func toStoredRateEntry(entry db.HistoryEntry, found, providerFailing bool, threshold time.Duration, now time.Time) api.RateEntry {
+	if !found {
+		return api.RateEntry{IsStale: true}
 	}
 
-	age := max(now.Sub(*d.LastUpdated), 0)
-
+	recordedAt := entry.RecordedAt
+	age := max(now.Sub(recordedAt), 0)
 	return api.RateEntry{
-		Value:          d.Value,
-		LastUpdated:    d.LastUpdated,
+		Value:          entry.Value,
+		LastUpdated:    &recordedAt,
 		DataAgeSeconds: int(age.Seconds()),
-		IsStale:        age > threshold,
+		IsStale:        providerFailing || age > threshold,
 	}
 }
 
