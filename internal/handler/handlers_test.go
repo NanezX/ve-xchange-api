@@ -34,14 +34,18 @@ func TestGetRates_AllFresh(t *testing.T) {
 
 	st := state.NewState()
 	st.UpdateRates(state.StateRates{
-		UsdBcv:     state.RateData{Value: 480.5, LastUpdated: &ago},
-		EurBcv:     state.RateData{Value: 520.1, LastUpdated: &ago},
-		Usdt:       state.RateData{Value: 535.2, LastUpdated: &ago},
-		UsdtCompra: state.RateData{Value: 540.0, LastUpdated: &ago},
-		UsdtVenta:  state.RateData{Value: 530.0, LastUpdated: &ago},
+		UsdBcv: state.RateData{Value: 1, LastUpdated: &ago},
 	})
 
-	srv := withFixedNow(st, now)
+	store := &mockStore{latest: map[string]db.HistoryEntry{
+		string(api.UsdBcv):     {Value: 480.5, RecordedAt: ago},
+		string(api.EurBcv):     {Value: 520.1, RecordedAt: ago},
+		string(api.Usdt):       {Value: 535.2, RecordedAt: ago},
+		string(api.UsdtCompra): {Value: 540.0, RecordedAt: ago},
+		string(api.UsdtVenta):  {Value: 530.0, RecordedAt: ago},
+	}}
+	srv := withStore(st, store)
+	srv.now = func() time.Time { return now }
 	mux := mountMux(t, srv)
 
 	req := httptest.NewRequest(http.MethodGet, "/rates", nil)
@@ -76,11 +80,14 @@ func TestGetRates_AllFresh(t *testing.T) {
 	if resp.UsdBcv.DataAgeSeconds != 30 {
 		t.Fatalf("expected age=30s, got %d", resp.UsdBcv.DataAgeSeconds)
 	}
+	if store.latestCalls != 1 {
+		t.Fatalf("expected one latest-rate query, got %d", store.latestCalls)
+	}
 }
 
 func TestGetRates_EmptyStateIsStale(t *testing.T) {
 	st := state.NewState()
-	srv := withFixedNow(st, time.Now())
+	srv := withStore(st, &mockStore{latest: map[string]db.HistoryEntry{}})
 	mux := mountMux(t, srv)
 
 	req := httptest.NewRequest(http.MethodGet, "/rates", nil)
@@ -109,11 +116,11 @@ func TestGetRatesCurrency_OK(t *testing.T) {
 	now := time.Now()
 	ago := now.Add(-1 * time.Minute)
 	st := state.NewState()
-	st.UpdateRates(state.StateRates{
-		Usdt: state.RateData{Value: 540.0, LastUpdated: &ago},
-	})
-
-	srv := withFixedNow(st, now)
+	store := &mockStore{latest: map[string]db.HistoryEntry{
+		string(api.Usdt): {Value: 540.0, RecordedAt: ago},
+	}}
+	srv := withStore(st, store)
+	srv.now = func() time.Time { return now }
 	mux := mountMux(t, srv)
 
 	req := httptest.NewRequest(http.MethodGet, "/rates/usdt", nil)
@@ -130,6 +137,9 @@ func TestGetRatesCurrency_OK(t *testing.T) {
 	}
 	if resp.Value != 540.0 || resp.IsStale || resp.DataAgeSeconds != 60 {
 		t.Fatalf("unexpected response: %+v", resp)
+	}
+	if store.latestCalls != 1 {
+		t.Fatalf("expected one latest-rate query, got %d", store.latestCalls)
 	}
 }
 
@@ -265,16 +275,16 @@ func TestGetRates_ProviderFailingIsStaleEvenIfRecent(t *testing.T) {
 	recent := now.Add(-1 * time.Minute)
 
 	st := state.NewState()
-	st.UpdateRates(state.StateRates{
-		UsdBcv:     state.RateData{Value: 480.0, LastUpdated: &recent},
-		EurBcv:     state.RateData{Value: 520.0, LastUpdated: &recent},
-		Usdt:       state.RateData{Value: 530.0, LastUpdated: &recent},
-		UsdtCompra: state.RateData{Value: 535.0, LastUpdated: &recent},
-		UsdtVenta:  state.RateData{Value: 525.0, LastUpdated: &recent},
-	})
 	state.MarkBcvFailing(st)
 
-	srv := withFixedNow(st, now)
+	srv := withStore(st, &mockStore{latest: map[string]db.HistoryEntry{
+		string(api.UsdBcv):     {Value: 480.0, RecordedAt: recent},
+		string(api.EurBcv):     {Value: 520.0, RecordedAt: recent},
+		string(api.Usdt):       {Value: 530.0, RecordedAt: recent},
+		string(api.UsdtCompra): {Value: 535.0, RecordedAt: recent},
+		string(api.UsdtVenta):  {Value: 525.0, RecordedAt: recent},
+	}})
+	srv.now = func() time.Time { return now }
 	mux := mountMux(t, srv)
 
 	req := httptest.NewRequest(http.MethodGet, "/rates", nil)
@@ -310,8 +320,11 @@ func TestGetRates_ProviderFailingIsStaleEvenIfRecent(t *testing.T) {
 
 // mockStore is an in-memory implementation of db.Store for handler tests.
 type mockStore struct {
-	entries []db.HistoryEntry
-	lastErr error
+	entries     []db.HistoryEntry
+	lastErr     error
+	latest      map[string]db.HistoryEntry
+	latestErr   error
+	latestCalls int
 }
 
 func (m *mockStore) InsertRate(_ context.Context, _ string, _ float64, _ time.Time) error {
@@ -323,7 +336,8 @@ func (m *mockStore) GetHistory(_ context.Context, _ string, _, _ time.Time) ([]d
 }
 
 func (m *mockStore) GetLatestRates(_ context.Context) (map[string]db.HistoryEntry, error) {
-	return nil, nil
+	m.latestCalls++
+	return m.latest, m.latestErr
 }
 
 func (m *mockStore) ConsolidateDay(_ context.Context, _ string, _, _ time.Time) error {
@@ -335,6 +349,32 @@ func (m *mockStore) Close() {}
 func withStore(s *state.State, store db.Store) Server {
 	srv := NewServerWithStore(s, store)
 	return srv
+}
+
+func TestGetRates_NoStore_Returns503(t *testing.T) {
+	srv := NewServer(state.NewState())
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/rates", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 when store is nil, got %d", w.Code)
+	}
+}
+
+func TestGetRatesCurrency_StoreError_Returns503(t *testing.T) {
+	srv := withStore(state.NewState(), &mockStore{latestErr: context.DeadlineExceeded})
+	mux := mountMux(t, srv)
+
+	req := httptest.NewRequest(http.MethodGet, "/rates/usdt", nil)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, req)
+
+	if w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("expected 503 when latest-rate query fails, got %d", w.Code)
+	}
 }
 
 func TestGetRatesCurrencyHistory_NoStore_Returns503(t *testing.T) {
