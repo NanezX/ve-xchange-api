@@ -7,13 +7,13 @@ REST API for Venezuelan exchange rates. Fetches BCV (Banco Central de Venezuela)
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Health check — `200 OK` or `503` if any rate is stale |
-| `GET` | `/rates` | All current rates (`usd_bcv`, `eur_bcv`, `usdt`) |
-| `GET` | `/rates/{currency}` | Single currency rate |
+| `GET` | `/rates` | All current rates stored in PostgreSQL |
+| `GET` | `/rates/{currency}` | Single current rate stored in PostgreSQL |
 | `GET` | `/rates/{currency}/history` | Historical rates (`?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD`) |
 | `GET` | `/docs/` | Interactive Swagger UI |
 | `GET` | `/openapi.yaml` | Raw OpenAPI 3.0 spec |
 
-**Currency values:** `usd_bcv`, `eur_bcv`, `usdt`
+**Currency values:** `usd_bcv`, `eur_bcv`, `usdt`, `usdt_venta`, `usdt_compra`
 
 ## Configuration
 
@@ -66,9 +66,12 @@ go tool oapi-codegen --config api/oapi-codegen.yaml api/openapi.yaml
 
 | Currency | Source | Refresh |
 |----------|--------|---------|
-| `usd_bcv` | [DolarAPI](https://ve.dolarapi.com) | every 6 hours |
-| `eur_bcv` | [DolarAPI](https://ve.dolarapi.com) | every 6 hours |
+| `usd_bcv` | [Banco Central de Venezuela](https://bcv.org.ve) | on startup; weekdays from 17:00 UTC-4, retrying every 30 min after failure until 19:00 |
+| `eur_bcv` | [Banco Central de Venezuela](https://bcv.org.ve) | on startup; weekdays from 17:00 UTC-4, retrying every 30 min after failure until 19:00 |
 | `usdt` | Binance P2P API | every 5 minutes |
+
+The rate endpoints only query PostgreSQL. Provider HTTP requests occur in
+background workers and never during a client API request.
 
 ## Docker image
 
@@ -87,9 +90,9 @@ internal/
   config/                   — env var loading
   db/                       — PostgreSQL store + goose migrations
   handler/                  — HTTP handlers (implements ServerInterface)
-  provider/                 — DolarAPI & Binance HTTP clients
+  provider/                 — BCV HTML scraper & Binance HTTP clients
   rates/                    — PriceResponse type
-  state/                    — in-memory cache (AppState)
-  worker/                   — periodic price fetch loop
+  state/                    — provider health state
+  worker/                   — periodic and business-window fetch loops
 api/openapi.yaml            — OpenAPI 3.0 spec (source of truth)
 ```
