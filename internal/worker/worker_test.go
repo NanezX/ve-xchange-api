@@ -22,7 +22,7 @@ func (p *MockProvider) GetPrices() (rates.PriceResponse, error) {
 	p.called = true
 	p.mu.Unlock()
 	if p.priceError != nil {
-		return nil, p.priceError
+		return rates.PriceResponse{}, p.priceError
 	}
 	return p.prices, nil
 }
@@ -33,7 +33,7 @@ func (p *MockProvider) GetName() string {
 
 func TestWorkerApplyData(t *testing.T) {
 	mockProvider := &MockProvider{
-		prices: rates.PriceResponse{"USD": 543.21},
+		prices: rates.PriceResponse{Values: map[string]float64{"USD": 543.21}},
 	}
 
 	calls := make(chan struct{}, 1)
@@ -118,7 +118,7 @@ func TestWorkerTicksExecution(t *testing.T) {
 	calls := make(chan struct{}, wantApplies*2)
 
 	job := ProviderJob{
-		Provider: &MockProvider{prices: rates.PriceResponse{"USD": 543.21}},
+		Provider: &MockProvider{prices: rates.PriceResponse{Values: map[string]float64{"USD": 543.21}}},
 		Every:    time.Millisecond,
 		Apply:    func(rates.PriceResponse) { calls <- struct{}{} },
 	}
@@ -180,9 +180,9 @@ func TestWorkerDailyAt_RetriesOnFailure(t *testing.T) {
 		count: &callCount,
 		responses: func(n int) (rates.PriceResponse, error) {
 			if n < 2 {
-				return nil, errors.New("temporary failure")
+				return rates.PriceResponse{}, errors.New("temporary failure")
 			}
-			return rates.PriceResponse{"USD": 1.0}, nil
+			return rates.PriceResponse{Values: map[string]float64{"USD": 1.0}}, nil
 		},
 	}
 
@@ -222,7 +222,7 @@ func TestWorkerDailyAt_StopsRetryingAfter10Attempts(t *testing.T) {
 	prov := &mockSequenceProvider{
 		count: &callCount,
 		responses: func(n int) (rates.PriceResponse, error) {
-			return nil, errors.New("always fails")
+			return rates.PriceResponse{}, errors.New("always fails")
 		},
 	}
 
@@ -256,9 +256,9 @@ func TestWorkerOnRecoverCalledAfterStreak(t *testing.T) {
 		Provider: &mockSequenceProvider{
 			responses: func(n int) (rates.PriceResponse, error) {
 				if n < failCount {
-					return nil, errors.New("transient error")
+					return rates.PriceResponse{}, errors.New("transient error")
 				}
-				return rates.PriceResponse{"USD": 1.0}, nil
+				return rates.PriceResponse{Values: map[string]float64{"USD": 1.0}}, nil
 			},
 			count: &callCount,
 		},
@@ -362,10 +362,143 @@ func TestNextDaily_DifferentTimezone(t *testing.T) {
 	}
 }
 
+func TestNextBusinessWindowStart(t *testing.T) {
+	utcMinus4 := time.FixedZone("UTC-4", -4*60*60)
+	window := BusinessWindow{
+		Start:        TimeOfDay{Hour: 17, Minute: 0, Location: utcMinus4},
+		End:          TimeOfDay{Hour: 19, Minute: 0, Location: utcMinus4},
+		RetryEvery:   30 * time.Minute,
+		WeekdaysOnly: true,
+	}
+
+	testCases := []struct {
+		name string
+		now  time.Time
+		want time.Time
+	}{
+		{
+			name: "before start today",
+			now:  time.Date(2026, time.July, 13, 16, 0, 0, 0, utcMinus4),
+			want: time.Date(2026, time.July, 13, 17, 0, 0, 0, utcMinus4),
+		},
+		{
+			name: "after start schedules next weekday",
+			now:  time.Date(2026, time.July, 13, 17, 1, 0, 0, utcMinus4),
+			want: time.Date(2026, time.July, 14, 17, 0, 0, 0, utcMinus4),
+		},
+		{
+			name: "friday schedules monday",
+			now:  time.Date(2026, time.July, 17, 18, 0, 0, 0, utcMinus4),
+			want: time.Date(2026, time.July, 20, 17, 0, 0, 0, utcMinus4),
+		},
+		{
+			name: "weekend schedules monday",
+			now:  time.Date(2026, time.July, 18, 10, 0, 0, 0, utcMinus4),
+			want: time.Date(2026, time.July, 20, 17, 0, 0, 0, utcMinus4),
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			got := testCase.now.Add(nextBusinessWindowStart(window, testCase.now))
+			if !got.Equal(testCase.want) {
+				t.Fatalf("nextBusinessWindowStart() = %v, want %v", got, testCase.want)
+			}
+		})
+	}
+}
+
+func TestBusinessWindowRetriesEndBeforeClosingTime(t *testing.T) {
+	utcMinus4 := time.FixedZone("UTC-4", -4*60*60)
+	window := BusinessWindow{
+		Start:        TimeOfDay{Hour: 17, Minute: 0, Location: utcMinus4},
+		End:          TimeOfDay{Hour: 19, Minute: 0, Location: utcMinus4},
+		RetryEvery:   30 * time.Minute,
+		WeekdaysOnly: true,
+	}
+	start := time.Date(2026, time.July, 13, 17, 0, 0, 0, utcMinus4)
+	deadline := businessWindowEnd(window, start)
+
+	current := start
+	for _, want := range []time.Time{
+		time.Date(2026, time.July, 13, 17, 30, 0, 0, utcMinus4),
+		time.Date(2026, time.July, 13, 18, 0, 0, 0, utcMinus4),
+		time.Date(2026, time.July, 13, 18, 30, 0, 0, utcMinus4),
+	} {
+		next, shouldRetry := nextBusinessWindowRetry(current, deadline, window.RetryEvery)
+		if !shouldRetry || !next.Equal(want) {
+			t.Fatalf("next retry from %v = (%v, %t), want (%v, true)", current, next, shouldRetry, want)
+		}
+		current = next
+	}
+
+	next, shouldRetry := nextBusinessWindowRetry(current, deadline, window.RetryEvery)
+	if shouldRetry || !next.Equal(deadline) {
+		t.Fatalf("next retry from 18:30 = (%v, %t), want (19:00, false)", next, shouldRetry)
+	}
+}
+
+func TestRunBusinessWindow_ContextCancelledDuringWindowWait(t *testing.T) {
+	loc := time.UTC
+	// Window starts ~23h from now → real timer never fires during the test.
+	future := time.Now().Add(23 * time.Hour)
+	window := BusinessWindow{
+		Start:      TimeOfDay{Hour: future.Hour(), Minute: future.Minute(), Location: loc},
+		End:        TimeOfDay{Hour: future.Hour() + 1, Minute: 0, Location: loc},
+		RetryEvery: 5 * time.Minute,
+	}
+
+	done := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		runBusinessWindow(ctx, window, func(bool) bool { return true })
+		close(done)
+	}()
+
+	cancel()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("goroutine did not exit after cancellation")
+	}
+}
+
+func TestBusinessWindowViaStartPriceWorker_InitialFetchRunsImmediately(t *testing.T) {
+	provider := &MockProvider{prices: rates.PriceResponse{Values: map[string]float64{"USD": 1.0}}}
+	calls := make(chan struct{}, 1)
+
+	loc := time.UTC
+	// Window starts in the future so the scheduled fetch doesn't interfere.
+	future := time.Now().Add(1 * time.Hour)
+	job := ProviderJob{
+		Provider: provider,
+		BusinessWindow: &BusinessWindow{
+			Start:      TimeOfDay{Hour: future.Hour(), Minute: future.Minute(), Location: loc},
+			End:        TimeOfDay{Hour: future.Hour() + 1, Minute: 0, Location: loc},
+			RetryEvery: 5 * time.Minute,
+		},
+		Apply: func(rates.PriceResponse) { calls <- struct{}{} },
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	wg := StartPriceWorker(ctx, []ProviderJob{job})
+
+	select {
+	case <-calls:
+	case <-time.After(time.Second):
+		t.Fatal("initial fetch did not fire for BusinessWindow job")
+	}
+
+	cancel()
+	wg.Wait()
+}
+
 func TestWorkerDailyAt_InitialFetchRunsImmediately(t *testing.T) {
 	// DailyAt is set — the initial fetch must still run at startup (before the
 	// first daily timer fires).
-	provider := &MockProvider{prices: rates.PriceResponse{"USD": 1.0}}
+	provider := &MockProvider{prices: rates.PriceResponse{Values: map[string]float64{"USD": 1.0}}}
 	calls := make(chan struct{}, 1)
 
 	loc := time.UTC
