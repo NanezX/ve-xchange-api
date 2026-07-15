@@ -14,6 +14,9 @@ type FakeHTTPDoer struct {
 }
 
 func (f *FakeHTTPDoer) Do(req *http.Request) (*http.Response, error) {
+	if f.Error != nil {
+		return nil, f.Error
+	}
 	if f.DoFunc == nil {
 		return &http.Response{StatusCode: f.StatusCode, Body: io.NopCloser(strings.NewReader(f.Body))}, nil
 	}
