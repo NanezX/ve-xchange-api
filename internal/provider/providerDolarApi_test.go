@@ -27,12 +27,12 @@ func TestGetPriceDolazApiSuccess(t *testing.T) {
 		t.Fatalf("Expected success, got %v", err)
 	}
 
-	if prices["USD_BCV"] != usdPrice {
-		t.Fatalf("Expected USD Price '%v', got '%v'", usdPrice, prices["USD_BCV"])
+	if prices.Values["USD_BCV"] != usdPrice {
+		t.Fatalf("Expected USD Price '%v', got '%v'", usdPrice, prices.Values["USD_BCV"])
 	}
 
-	if prices["EUR_BCV"] != eurPrice {
-		t.Fatalf("Expected EUR Price '%v', got '%v'", eurPrice, prices["EUR_BCV"])
+	if prices.Values["EUR_BCV"] != eurPrice {
+		t.Fatalf("Expected EUR Price '%v', got '%v'", eurPrice, prices.Values["EUR_BCV"])
 	}
 
 }
@@ -228,8 +228,8 @@ func TestGetPriceDolazApiExtremelyLargeValues(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error for large values: %v", err)
 	}
-	if prices["USD_BCV"] != 1e308 {
-		t.Fatalf("expected 1e308, got %v", prices["USD_BCV"])
+	if prices.Values["USD_BCV"] != 1e308 {
+		t.Fatalf("expected 1e308, got %v", prices.Values["USD_BCV"])
 	}
 }
 

@@ -159,37 +159,39 @@ func (p *BinanceProvider) getAllOrders(tradeType TradeType) ([]float64, error) {
 func (p *BinanceProvider) GetPrices() (rates.PriceResponse, error) {
 	sellPrices, err := p.getAllOrders(TypeSell)
 	if err != nil {
-		return nil, err
+		return rates.PriceResponse{}, err
 	}
 
 	buyPrices, err := p.getAllOrders(TypeBuy)
 	if err != nil {
-		return nil, err
+		return rates.PriceResponse{}, err
 	}
 
 	sellAvg, err := averageValid(sellPrices)
 	if err != nil {
-		return nil, fmt.Errorf("binance sell prices - %w", err)
+		return rates.PriceResponse{}, fmt.Errorf("binance sell prices - %w", err)
 	}
 
 	buyAvg, err := averageValid(buyPrices)
 	if err != nil {
-		return nil, fmt.Errorf("binance buy prices - %w", err)
+		return rates.PriceResponse{}, fmt.Errorf("binance buy prices - %w", err)
 	}
 
 	combined := slices.Concat(sellPrices, buyPrices)
 
 	overallAvg, err := averageValid(combined)
 	if err != nil {
-		return nil, fmt.Errorf("binance prices - %w", err)
+		return rates.PriceResponse{}, fmt.Errorf("binance prices - %w", err)
 	}
 
 	return rates.PriceResponse{
-		"USDT": overallAvg,
-		// User wants to SELL: matches with merchants' BUY ADS.
-		"USDT_BINANCE_SELL": buyAvg,
-		// User wants to BUY: matches with merchants' SELL ADS.
-		"USDT_BINANCE_BUY": sellAvg,
+		Values: map[string]float64{
+			"USDT": overallAvg,
+			// User wants to SELL: matches with merchants' BUY ADS.
+			"USDT_BINANCE_SELL": buyAvg,
+			// User wants to BUY: matches with merchants' SELL ADS.
+			"USDT_BINANCE_BUY": sellAvg,
+		},
 	}, nil
 
 }
