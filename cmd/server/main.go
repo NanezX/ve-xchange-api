@@ -89,7 +89,7 @@ func main() {
 				Start:        worker.TimeOfDay{Hour: 17, Minute: 0, Location: utcMinus4},
 				End:          worker.TimeOfDay{Hour: 19, Minute: 0, Location: utcMinus4},
 				RetryEvery:   30 * time.Minute,
-				WeekdaysOnly: true,
+				WeekdaysOnly: false,
 			},
 			ValidateScheduled: func(pr rates.PriceResponse, now time.Time) error {
 				return provider.ValidateBCVPublication(pr, now, utcMinus4)

@@ -7,7 +7,7 @@ Reemplazar `ve.dolarapi.com` como fuente de USD/EUR por scraping directo del BCV
 ## Arquitectura
 
 - **Provider:** `internal/provider/bcvProvider.go` — scraper con goquery que extrae USD, EUR y Fecha Valor del HTML de bcv.org.ve. Normaliza números localizados (coma decimal, separador de miles).
-- **Worker:** `internal/worker/worker.go` — `BusinessWindow` ejecuta el fetch programado de lun–vie 17:00–19:00 UTC-4 con reintentos cada 30 min si el BCV aún no publicó la tasa nueva.
+- **Worker:** `internal/worker/worker.go` — `BusinessWindow` ejecuta el fetch programado diario 17:00–19:00 UTC-4 con reintentos cada 30 min si el BCV aún no publicó la tasa nueva. `ValidateScheduled` evita aceptar tasas viejas incluso en fines de semana.
 - **Validación:** se rechazan respuestas cuya Fecha Valor no sea el próximo día hábil (ej: viernes se espera lunes).
 - **Persistencia:** los handlers `/rates` y `/rates/{currency}` leen desde PostgreSQL (`GetLatestRates`), no desde la memoria del proceso. Si la DB no responde, devuelven 503.
 
